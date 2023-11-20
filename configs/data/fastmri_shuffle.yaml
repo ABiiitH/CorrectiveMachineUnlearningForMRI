@@ -17,8 +17,8 @@ train_filter: null
 val_filter: null
 test_filter: null
 use_dataset_cache_file: true
-dataset_cache_file: "fastmri_knee.pkl"
+dataset_cache_file: "fastmri_knee_shuffle.pkl"
 num_cols: null
-batch_size: 12
+batch_size: 16
 num_workers: 4
 distributed_sampler: false

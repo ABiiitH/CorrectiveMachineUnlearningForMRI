@@ -4,7 +4,7 @@
 # python train.py experiment=example
 
 defaults:
-  - override /data: fastmri
+  - override /data: fastmri_shuffle
   - override /model: unet
   - override /callbacks: default
   - override /trainer: gpu
@@ -33,10 +33,7 @@ trainer:
 data:
   batch_size: 16
 
-# logger:
-#   comet:
-# wandb:
-#   tags: ${tags}
-#   group: "mnist"
-# aim:
-#   experiment: "mnist"
+logger:
+  comet:
+    project_name: "MRI_Recon_fastMRI_unlearning"
+
