@@ -233,7 +233,7 @@ class VarNetBlock(nn.Module):
     
     def forward(
         self,
-        current_kspace: torch.Tensor,
+        current_kspace: torch.Tensor, # b, c, h, w, comp
         ref_kspace: torch.Tensor,
         mask: torch.Tensor,
         sens_maps: torch.Tensor,
