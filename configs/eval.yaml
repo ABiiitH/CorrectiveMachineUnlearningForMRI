@@ -2,17 +2,24 @@
 
 defaults:
   - _self_
-  - data: mnist # choose datamodule with `test_dataloader()` for evaluation
-  - model: mnist
-  - logger: null
-  - trainer: default
+  - data: test_fastmri_multicoil # choose datamodule with `test_dataloader()` for evaluation
+  - model: varnet
+  - callbacks: default
+  - logger: comet
+  - trainer: gpu
   - paths: default
   - extras: default
   - hydra: default
+  - transforms: fastmri
 
-task_name: "eval"
+task_name: "MRI_Recon_fastMRI_multicoil"
 
 tags: ["dev"]
 
 # passing checkpoint path is necessary for evaluation
-ckpt_path: ???
+# brain only
+ckpt_path: "/home/s2287251/idcom_imaging/Users/yuyang/VIOS-s/ReconUnlearning/logs/MRI_Recon_fastMRI_multicoil/runs/brain_only_checkpoints/checkpoints/epoch_048_step_699720.ckpt"
+# brain knee mixed
+# ckpt_path: "/home/s2287251/idcom_imaging/Users/yuyang/VIOS-s/ReconUnlearning/logs/MRI_Recon_fastMRI_multicoil/runs/brain_knee_mixed_checkpoints/checkpoints/epoch_039_step_853160.ckpt"
+
+seed: 42

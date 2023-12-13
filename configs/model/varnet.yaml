@@ -1,4 +1,4 @@
-_target_: src.models.varnet_module.VarnetModel
+_target_: src.models.varnet_module.VarNetModule
 
 optimizer:
   _target_: torch.optim.Adam
@@ -13,8 +13,8 @@ scheduler:
   factor: 0.1
   patience: 10
 
-net:
-  _target_: src.models.components.varnet.Varnet
+net:        
+  _target_: src.models.components.varnet.VarNet
   num_cascades: 12
   pools: 4
   chans: 18

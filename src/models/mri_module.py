@@ -125,9 +125,9 @@ class MriModule(LightningModule):
             torch.tensor(len(losses), dtype=torch.float)
         )
 
-        self.log("val/loss", val_loss / tot_slice_examples, prog_bar=True)
+        self.log("val/loss", val_loss / tot_slice_examples, prog_bar=True, sync_dist=True)
         for metric, value in metrics.items():
-            self.log(f"val_metrics/{metric}", value / tot_examples)
+            self.log(f"val_metrics/{metric}", value / tot_examples, sync_dist=True)
             
         self.validation_step_outputs.clear()
 
@@ -168,14 +168,14 @@ class MriModule(LightningModule):
         
         for log in self.test_step_outputs:
             for i, (fname, slice_num) in enumerate(zip(log['fname'], log['slice_num'])):
-                outputs[fname][slice_num] = log['output'][i].cpu()
+                outputs[fname][slice_num] = log['output'][i]#.cpu()
                 
         # stack all the slices for each file
         for fname in outputs:
             outputs[fname] = np.stack([out for _, out in sorted(outputs[fname].items())])
             
         #use the default_root_dir if we have a trainer, otherwise save to cwd
-        dir_name = "retain_forget_dataset"
+        dir_name = "test_dataset"
         if hasattr(self, "trainer"):
             save_dir = Path(self.trainer.default_root_dir) / dir_name
         else:

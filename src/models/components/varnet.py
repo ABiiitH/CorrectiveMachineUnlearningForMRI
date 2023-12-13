@@ -43,7 +43,7 @@ class NormUnet(nn.Module):
             out_chans: Number of channels in the output to the U-Net model.
             drop_prob: Dropout probability.
         """
-        super.__init__()
+        super().__init__()
         
         self.unet = Unet(
             in_chans = in_chans,
@@ -57,36 +57,46 @@ class NormUnet(nn.Module):
         b, c, h, w, two = x.shape
         assert two == 2
         return x.permute(0, 4, 1, 2, 3).reshape(b, 2 * c, h, w)
-    
-    def chan_to_complex_dim(self, x: torch.Tensor) -> torch.Tensor:
+
+    def chan_complex_to_last_dim(self, x: torch.Tensor) -> torch.Tensor:
         b, c2, h, w = x.shape
-        assert c2  % 2 == 0
-        return x.view(b, 2, c2 // 2, h, w).permute(0, 2, 3, 4, 1).contiguous()
-    
+        assert c2 % 2 == 0
+        c = c2 // 2
+        return x.view(b, 2, c, h, w).permute(0, 2, 3, 4, 1).contiguous()
+
     def norm(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        #group norm
+        # group norm
         b, c, h, w = x.shape
-        x = x.view(b, 2, c // 2, h, w)
-        mean = x.mean(dim=2).view(b, 2, 1, 1)    
+        x = x.view(b, 2, c // 2 * h * w)
+
+        mean = x.mean(dim=2).view(b, 2, 1, 1)
         std = x.std(dim=2).view(b, 2, 1, 1)
-        x = x.view(b, c, h, w)#
+
+        x = x.view(b, c, h, w)
+
         return (x - mean) / std, mean, std
-    
+
     def unnorm(
         self, x: torch.Tensor, mean: torch.Tensor, std: torch.Tensor
     ) -> torch.Tensor:
         return x * std + mean
-    
-    def pad(self, x:torch.Tensor):
+
+    def pad(
+        self, x: torch.Tensor
+    ) -> Tuple[torch.Tensor, Tuple[List[int], List[int], int, int]]:
         _, _, h, w = x.shape
         w_mult = ((w - 1) | 15) + 1
         h_mult = ((h - 1) | 15) + 1
         w_pad = [math.floor((w_mult - w) / 2), math.ceil((w_mult - w) / 2)]
         h_pad = [math.floor((h_mult - h) / 2), math.ceil((h_mult - h) / 2)]
+        # TODO: fix this type when PyTorch fixes theirs
+        # the documentation lies - this actually takes a list
+        # https://github.com/pytorch/pytorch/blob/master/torch/nn/functional.py#L3457
+        # https://github.com/pytorch/pytorch/pull/16949
         x = F.pad(x, w_pad + h_pad)
 
         return x, (h_pad, w_pad, h_mult, w_mult)
-    
+
     def unpad(
         self,
         x: torch.Tensor,
@@ -99,19 +109,20 @@ class NormUnet(nn.Module):
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if not x.shape[-1] == 2:
-            raise ValueError("Last dimension must be 2 for complex")
-        
+            raise ValueError("Last dimension must be 2 for complex.")
+
+        # get shapes for unet and normalize
         x = self.complex_to_chan_dim(x)
         x, mean, std = self.norm(x)
         x, pad_sizes = self.pad(x)
-        
+
         x = self.unet(x)
-        
-        # get shapes back and unnormalise
+
+        # get shapes back and unnormalize
         x = self.unpad(x, *pad_sizes)
         x = self.unnorm(x, mean, std)
-        x = self.chan_to_complex_dim(x)
-        
+        x = self.chan_complex_to_last_dim(x)
+
         return x
     
     
@@ -124,13 +135,14 @@ class SensitivityModel(nn.Module):
     It can be used with the end-to-end variational network.
     """
     
-    def __init__(self, 
+    def __init__(
+	    self, 
         chans: int,
         num_pools: int,
         in_chans:int = 2,
         out_chans: int = 2,
         drop_prob: float = 0.0,
-        mask_center: bool = True) -> None:
+        mask_center: bool = True):
         """
 
         Args:
@@ -148,9 +160,9 @@ class SensitivityModel(nn.Module):
         self.norm_unet = NormUnet(
             chans,
             num_pools,
-            in_chans,
-            out_chans,
-            drop_prob,
+            in_chans=in_chans,
+            out_chans=out_chans,
+            drop_prob=drop_prob,
         )
         
     def chans_to_batch_dim(self, x: torch.Tensor) -> Tuple[torch.Tensor, int]:
@@ -167,26 +179,28 @@ class SensitivityModel(nn.Module):
     def divide_root_sum_of_squares(self, x: torch.Tensor) -> torch.Tensor:
         return x / rss_complex(x, dim=1).unsqueeze(-1).unsqueeze(1)
     
-    def get_pad_and_num_low_freqs(self, mask: torch.Tensor, num_low_frequencies: Optional[int]=None):
-        if num_low_frequencies is None or num_low_frequencies == 0:
+    def get_pad_and_num_low_freqs(
+        self, mask: torch.Tensor, num_low_frequencies: Optional[int] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        
+        if num_low_frequencies is None:
             # get low frequency line locations and mask them out
             squeezed_mask = mask[:, 0, 0, :, 0].to(torch.int8)
-            cent = squeezed_mask.shape[-1] // 2
+            cent = squeezed_mask.shape[1] // 2
             # running argmin returns the first non-zero
             left = torch.argmin(squeezed_mask[:, :cent].flip(1), dim=1)
             right = torch.argmin(squeezed_mask[:, cent:], dim=1)
             num_low_frequencies_tensor = torch.max(
-                2 * torch.min(left, right), 
-                torch.ones_like(left)
-            ) # force a symmetric center unless 1
+                2 * torch.min(left, right), torch.ones_like(left)
+            )  # force a symmetric center unless 1
         else:
             num_low_frequencies_tensor = num_low_frequencies * torch.ones(
                 mask.shape[0], dtype=mask.dtype, device=mask.device
             )
-            
-            pad = (mask.shape[-2] - num_low_frequencies_tensor + 1) // 2
-            
-            return pad.type(torch.long), num_low_frequencies_tensor.type(torch.long)
+
+        pad = (mask.shape[-2] - num_low_frequencies_tensor + 1) // 2
+
+        return pad.type(torch.long), num_low_frequencies_tensor.type(torch.long)
         
     def forward(
         self, 
@@ -194,11 +208,11 @@ class SensitivityModel(nn.Module):
         mask: torch.Tensor, 
         num_low_frequencies: Optional[int]=None) -> torch.Tensor:
         if self.mask_center:
-            pad, num_low_frequencies = self.get_pad_and_num_low_freqs(
+            pad, num_low_freqs = self.get_pad_and_num_low_freqs(
                 mask, num_low_frequencies
             )
             masked_kspace = batched_mask_center(
-                masked_kspace, pad, num_low_frequencies
+                masked_kspace, pad, pad + num_low_freqs
             )
             
         # convert to image space
@@ -208,6 +222,7 @@ class SensitivityModel(nn.Module):
         return self.divide_root_sum_of_squares(
             self.batch_chans_to_chan_dim(self.norm_unet(images), batches)
         )
+
         
         
 class VarNetBlock(nn.Module):

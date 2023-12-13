@@ -1,6 +1,5 @@
 from typing import Tuple
 from collections import defaultdict
-import pandas as pd
 
 import torch
 import numpy as np
@@ -34,8 +33,7 @@ class VarNetModule(MriModule):
         """Lightning hook that is called when training begins."""
         # by default lightning executes validation step sanity checks before training starts,
         # so it's worth to make sure validation metrics don't store results from these checks
-        
-		self.NMSE.reset()
+        self.NMSE.reset()
         self.SSIM.reset()
         self.PSNR.reset()
         self.ValLoss.reset()
@@ -182,11 +180,32 @@ class VarNetModule(MriModule):
             crop_size = batch.crop_size
 
         output = center_crop(output, crop_size)
+        target = center_crop(target, crop_size)
+        
+        mse_vals = defaultdict(dict)
+        target_norms = defaultdict(dict)
+        ssim_vals = defaultdict(dict)
+        max_vals = dict()
+        
+        for i, fname in enumerate(batch.fname):
+            slice_num = int(batch.slice_num[i].cpu())
+            maxval = batch.max_value[i].cpu().numpy()
+            output_i = output[i].cpu().numpy()
+            target_i = target[i].cpu().numpy()
+            
+            mse_vals[fname][slice_num] = torch.tensor(mse(target_i, output_i)).view(1)
+            target_norms[fname][slice_num] = torch.tensor(mse(target_i, np.zeros_like(target_i))).view(1)
+            ssim_vals[fname][slice_num] = torch.tensor(ssim(target_i[None, ...], output_i[None, ...], maxval=maxval)).view(1)
+            max_vals[fname] = maxval
 
         pred = {
             "fname": batch.fname,
-            "slice": batch.slice_num,
+            "slice_num": batch.slice_num,
             "output": output.cpu().numpy(),
+            "mse_vals": dict(mse_vals),
+            "target_norms": dict(target_norms),
+            "ssim_vals": dict(ssim_vals),
+            "max_vals": max_vals
         }
         self.test_step_outputs.append(pred)
         
@@ -227,4 +246,4 @@ class VarNetModule(MriModule):
         return {"optimizer": optimizer}
 
 if __name__ == "__main__":
-    _ = VarnetModule()
+    _ = VarNetModule()

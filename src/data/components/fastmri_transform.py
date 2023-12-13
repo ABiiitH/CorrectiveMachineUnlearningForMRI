@@ -162,8 +162,8 @@ class VarNetDataTransform:
     """
     def __init__(
         self,
+        challenge: str = "multicoil",        
         mask_func: Optional[MaskFunc] = None,
-        challenge: str = "multicoil",
         use_seed: bool = True,
     ):
         """
