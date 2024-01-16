@@ -17,7 +17,7 @@ train_filter: null
 val_filter: null
 test_filter: null
 use_dataset_cache_file: true
-dataset_cache_file: "fastmri_brain_multi_retain_test.pkl"
+dataset_cache_file: "test_fastmri_knee_multi.pkl"
 num_cols: null
 batch_size: 1
 num_workers: 4

@@ -17,8 +17,8 @@ train_filter: null
 val_filter: null
 test_filter: null
 use_dataset_cache_file: true
-dataset_cache_file: "brain_finetuning.pkl"
+dataset_cache_file: "brain_test.pkl"
 num_cols: null
-batch_size: 8
+batch_size: 1
 num_workers: 32
 distributed_sampler: false

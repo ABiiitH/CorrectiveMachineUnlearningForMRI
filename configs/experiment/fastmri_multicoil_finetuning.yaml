@@ -4,25 +4,24 @@
 # python train.py experiment=example
 
 defaults:
-  - override /data: fastmri_mix_multicoil
+  - override /data: fastmri_multicoil
   - override /model: varnet
   - override /callbacks: default
-  - override /trainer: ddp
+  - override /trainer: gpu
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["fastmri_knee", "varnet"]
+tags: ["fastmri_brain", "varnet"]
 
 seed: 42
 
 trainer:
-  min_epochs: 0
-  max_epochs: 50
+  min_epochs: 50
+  max_epochs: 56
   gradient_clip_val: 0.5
 
-ckpt_path: "/home/s2287251/idcom_imaging/Users/yuyang/VIOS-s/ReconUnlearning/logs/MRI_Recon_fastMRI_multicoil/runs/brain_knee_mixed_checkpoints/checkpoints/epoch_035_step_767844.ckpt"
-
+ckpt_path: "/home/s2287251/idcom_imaging/Users/yuyang/VIOS-s/ReconUnlearning/logs/MRI_Recon_fastMRI_multicoil_mixed/runs/2024-01-11_16-30-11/checkpoints/epoch_049_step_1066450.ckpt"
 
 # model:
 #   optimizer:
@@ -36,15 +35,13 @@ ckpt_path: "/home/s2287251/idcom_imaging/Users/yuyang/VIOS-s/ReconUnlearning/log
 data:
   batch_size: 1
 
-task_name: "MRI_Recon_fastMRI_multicoil_mixed"
+task_name: "MRI_Recon_fastMRI_multicoil_finetuning"
 
 
 logger:
   comet:
-    project_name: "fastMRI_unlearning_multicoil_mixed"
+    project_name: "fastMRI_unlearning_multicoil_finetuning"
 
-# logger:
-#   comet:
 # wandb:
 #   tags: ${tags}
 #   group: "mnist"
