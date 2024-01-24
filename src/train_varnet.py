@@ -69,9 +69,9 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     )
     print(mask)
     # use random masks for train transform, fixed masks for val transform
-    train_transform = VarNetDataTransform(cfg.data.challenge, mask_func=mask, use_seed=False)
-    val_transform   = VarNetDataTransform(cfg.data.challenge, mask_func=mask, use_seed=True)
-    test_transform  = VarNetDataTransform(cfg.data.challenge, mask_func=mask, use_seed=True)
+    train_transform = VarNetDataTransform(cfg.data.challenge, mask_func=mask, use_seed=False, noisy_label=False)
+    val_transform   = VarNetDataTransform(cfg.data.challenge, mask_func=mask, use_seed=True, noisy_label=False)
+    test_transform  = VarNetDataTransform(cfg.data.challenge, mask_func=mask, use_seed=True, noisy_label=False)
         
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")

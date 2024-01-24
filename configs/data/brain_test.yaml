@@ -20,5 +20,5 @@ use_dataset_cache_file: true
 dataset_cache_file: "brain_test.pkl"
 num_cols: null
 batch_size: 1
-num_workers: 32
+num_workers: 2
 distributed_sampler: false

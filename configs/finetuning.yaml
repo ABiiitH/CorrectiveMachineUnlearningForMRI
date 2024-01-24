@@ -16,7 +16,7 @@ defaults:
 
   # experiment configs allow for version control of specific hyperparameters
   # e.g. best hyperparameters for given model and datamodule
-  - experiment: fastmri_multicoil_training
+  - experiment: fastmri_multicoil_ul_finetuning
 
   # config for hyperparameter optimization
   - hparams_search: null
@@ -28,8 +28,12 @@ defaults:
   # debugging config (enable through command line, e.g. `python train.py debug=default)
   - debug: null
 
+callbacks:
+  model_checkpoint:
+    save_on_train_epoch_end: true
+
 # task name, determines output directory path
-task_name: "Oracle"
+task_name: "fastMRI_unlearning_finetuning"
 
 # tags to help you identify your experiments
 # you can overwrite this in experiment configs
@@ -43,12 +47,8 @@ train: True
 # lightning chooses best weights based on the metric specified in checkpoint callback
 test: false
 
-logger:
-  comet:
-    project_name: "fastmri-multicoil-training"
-
 # simply provide checkpoint path to resume training
-# ckpt_path: "/home/s2287251/idcom_imaging/Users/yuyang/VIOS-s/ReconUnlearning/logs/MRI_Recon_fastMRI_multicoil_finetuning/ckpt/epoch_048_step_699720.ckpt"
+ckpt_path: "/home/s2287251/data2/Users/Yuyang/Projects/ReconUnlearning/logs/Oracle/runs/"
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: 42

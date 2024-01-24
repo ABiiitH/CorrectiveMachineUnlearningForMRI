@@ -19,6 +19,6 @@ test_filter: null
 use_dataset_cache_file: true
 dataset_cache_file: "fastmri_brain_knee_mix_multi.pkl"
 num_cols: null
-batch_size: 8
-num_workers: 4
+batch_size: 1
+num_workers: 2
 distributed_sampler: false

@@ -2,7 +2,7 @@
 
 defaults:
   - _self_
-  - data: knee_test # choose datamodule with `test_dataloader()` for evaluation
+  - data: fastmri_multicoil # choose datamodule with `test_dataloader()` for evaluation
   - model: varnet
   - callbacks: default
   - logger: comet
@@ -12,11 +12,18 @@ defaults:
   - hydra: default
   - transforms: fastmri
 
-task_name: "MRI_Recon_fastMRI_multicoil_finetuning"
+  - experiment: fastmri_multicoil_knee_testing
 
-tags: ["dev"]
+
+task_name: "Evaluation"
+
+tags: ["fastmri", "testing"]
+
+logger:
+  comet:
+    project_name: "fastmri-multicoil-evaluation"
 
 # passing checkpoint path is necessary for evaluation
-ckpt_path: "/home/s2287251/idcom_imaging/Users/yuyang/VIOS-s/ReconUnlearning/logs/MRI_Recon_fastMRI_multicoil_mixed/runs/2024-01-11_16-30-11/checkpoints/epoch_049_step_1066450.ckpt"
+ckpt_path: "/home/s2287251/data2/Users/Yuyang/Projects/ReconUnlearning/logs/Oracle/Oracle_ckpts/checkpoints/epoch_048_step_289002.ckpt"
 
 seed: 42

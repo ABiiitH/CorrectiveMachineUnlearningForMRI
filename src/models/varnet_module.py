@@ -88,6 +88,9 @@ class VarNetModule(MriModule):
         :param batch_idx: The index of the current batch.
         """
         
+        if self.current_epoch > 50:
+            return
+        
         loss, output, target = self.model_step(batch)
         # update and log metrics
         
@@ -210,6 +213,7 @@ class VarNetModule(MriModule):
         self.test_step_outputs.append(pred)
         
         return pred
+    
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit (train + validate), validate,
         test, or predict.

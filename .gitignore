@@ -155,3 +155,4 @@ configs/local/default.yaml
 .env.example
 src/.hydra
 Thumbs.db
+records/

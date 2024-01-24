@@ -165,6 +165,7 @@ class VarNetDataTransform:
         challenge: str = "multicoil",        
         mask_func: Optional[MaskFunc] = None,
         use_seed: bool = True,
+        noisy_label: bool = False,
     ):
         """
 
@@ -187,6 +188,7 @@ class VarNetDataTransform:
         self.mask_func = mask_func
         self.challenge = challenge
         self.use_seed = use_seed
+        self.noisy_label = noisy_label
         
     def __call__(
         self,
@@ -215,10 +217,15 @@ class VarNetDataTransform:
         """
         if target is not None:
             target_torch = to_tensor(target)
+            if self.noisy_label and fname.startswith("file1"):
+                target_torch = torch.randn_like(target_torch)
+
             max_value = attrs["max"] if "max" in attrs.keys() else 0.0
         else:
             target_torch = torch.Tensor([0])
             max_value = 0.0
+        
+            
         
         kspace_torch = to_tensor(kspace)
         seed = None if not self.use_seed else tuple(map(ord, fname))
