@@ -1,0 +1,29 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /data: forget_test
+  - override /model: varnet
+  - override /callbacks: default
+  - override /trainer: gpu
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["fastmri_brain", "varnet", "testing"]
+
+seed: 42
+
+# trainer:
+#   min_epochs: 50
+#   max_epochs: 60
+#   gradient_clip_val: 0.5
+
+data:
+  batch_size: 1
+
+logger:
+  comet:
+    project_name: "fastmri-multicoil-evaluation"

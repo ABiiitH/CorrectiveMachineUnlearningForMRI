@@ -5,10 +5,10 @@ import torch
 import numpy as np
 
 from src.data.components.fastmri_transform_utils import center_crop_to_smallest, center_crop
+from src.models.components.utils import l1_regularization
 from src.models.mri_module import MriModule
 from src.models.losses.ssim import SSIMLoss
 from src.utils.evaluate import mse, ssim
-
 
 
 class VarNetModule(MriModule):
@@ -18,17 +18,24 @@ class VarNetModule(MriModule):
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         compile: bool,
+        ga: bool = False,
+        l1_reg: bool = False,
+        armotized: float = 1.0,
         **kwargs
     ):
         super().__init__( **kwargs)
         self.save_hyperparameters(logger=True, ignore=['net'])
         self.net = net
+        self.ga = ga
+        self.l1_reg = l1_reg
+        self.armotized = armotized
         
         self.l1loss = torch.nn.L1Loss()
         self.ssimloss = SSIMLoss()
         
     def forward(self, masked_kspace, mask, num_low_frequencies):
         return self.net(masked_kspace, mask, num_low_frequencies)
+    
     def on_train_start(self) -> None:
         """Lightning hook that is called when training begins."""
         # by default lightning executes validation step sanity checks before training starts,
@@ -51,8 +58,8 @@ class VarNetModule(MriModule):
             - A tensor of losses.
         """
         output = self(batch.masked_kspace, batch.mask, batch.num_low_frequencies)
-
         target, output = center_crop_to_smallest(batch.target, output)
+        # print(target.max(), target.min(), output.max(), output.min())
         loss = self.ssimloss(
             output.unsqueeze(1), target.unsqueeze(1), data_range=batch.max_value
         ) + 1e-5 * self.l1loss(output.unsqueeze(1), target.unsqueeze(1))
@@ -70,10 +77,19 @@ class VarNetModule(MriModule):
 
         :return: A tensor of losses.
         """
+        
         loss, _, _ = self.model_step(batch)
+        if self.ga and batch.fname[0].startswith("file1"):
+            loss *= -1 
+        if self.l1_reg and batch.fname[0].startswith("file1"):
+            loss += loss + l1_regularization(self.net)
+        if self.armotized and batch.fname[0].startswith("file1"):
+            loss *= self.armotized
         self.train_loss(loss)
         self.log("train/loss", self.train_loss, prog_bar=False)
-        
+        # for name, param in self.net.named_parameters():
+        #     if param.requires_grad:
+        #         print(name, param.grad)
         return loss
     
     def on_train_epoch_end(self) -> None:
@@ -87,9 +103,6 @@ class VarNetModule(MriModule):
             labels.
         :param batch_idx: The index of the current batch.
         """
-        
-        if self.current_epoch > 50:
-            return
         
         loss, output, target = self.model_step(batch)
         # update and log metrics
@@ -242,12 +255,26 @@ class VarNetModule(MriModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val/loss",
+                    #"monitor": "val/loss",
+                    "monitor": "train/loss",
                     "interval": "epoch",
                     "frequency": 1,
                 },
             }
         return {"optimizer": optimizer}
+
+
+class VarNetFTModule(VarNetModule):
+    
+        
+    def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+        if self.current_epoch > 45:
+            return
+    def on_validation_epoch_end(self) -> None:
+        "Lightning hook that is called when a validation epoch ends."
+        if self.current_epoch > 45:
+            return 
+    
 
 if __name__ == "__main__":
     _ = VarNetModule()

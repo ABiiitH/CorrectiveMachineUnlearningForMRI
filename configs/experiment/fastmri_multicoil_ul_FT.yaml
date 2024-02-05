@@ -5,7 +5,7 @@
 
 defaults:
   - override /data: fastmri_multicoil
-  - override /model: varnet
+  - override /model: varnet_ft
   - override /callbacks: default
   - override /trainer: gpu
 
@@ -17,14 +17,24 @@ tags: ["fastmri_brain", "fastmri_knee", "varnet"]
 seed: 42
 
 trainer:
-  min_epochs: 55
-  max_epochs: 60
+  max_epochs: 56
   gradient_clip_val: 0.5
+  limit_val_batches: 0
+  num_sanity_val_steps: 0
+
+callbacks:
+  model_checkpoint:
+    monitor: "train/loss"
+    save_on_train_epoch_end: true
+    save_top_k: -1
+    every_n_epochs: 1
+  early_stopping:
+    monitor: "train/loss"
 
 data:
-  dataset_cache_file: "brain_retain_10per.pkl"
+  dataset_cache_file: "brain_only.pkl"
   batch_size: 1
 
 logger:
   comet:
-    experiment_name: "FastMRI_Unlearning"
+    project_name: "fastmri-multicoil-unlearning"

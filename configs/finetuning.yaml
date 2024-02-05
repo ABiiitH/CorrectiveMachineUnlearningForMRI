@@ -5,7 +5,7 @@
 defaults:
   - _self_
   - data: fastmri_multicoil
-  - model: varnet
+  - model: varnet_ft
   - callbacks: default
   - logger: comet # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: gpu
@@ -16,7 +16,7 @@ defaults:
 
   # experiment configs allow for version control of specific hyperparameters
   # e.g. best hyperparameters for given model and datamodule
-  - experiment: fastmri_multicoil_ul_finetuning
+  - experiment: fastmri_multicoil_ul_GA
 
   # config for hyperparameter optimization
   - hparams_search: null
@@ -33,7 +33,7 @@ callbacks:
     save_on_train_epoch_end: true
 
 # task name, determines output directory path
-task_name: "fastMRI_unlearning_finetuning"
+task_name: "FineTuning"
 
 # tags to help you identify your experiments
 # you can overwrite this in experiment configs
@@ -48,7 +48,9 @@ train: True
 test: false
 
 # simply provide checkpoint path to resume training
-ckpt_path: "/home/s2287251/data2/Users/Yuyang/Projects/ReconUnlearning/logs/Oracle/runs/"
+ckpt_path: "/localdisk/data2/Users/Yuyang/Projects/ReconUnlearning/logs/Original/Original_ckpts/epoch_048_step_315266.ckpt"
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: 42
+
+

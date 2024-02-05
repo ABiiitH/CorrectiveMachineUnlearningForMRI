@@ -223,8 +223,7 @@ class SensitivityModel(nn.Module):
             self.batch_chans_to_chan_dim(self.norm_unet(images), batches)
         )
 
-        
-        
+               
 class VarNetBlock(nn.Module):
     """
     Model block for end-to-end variational network.

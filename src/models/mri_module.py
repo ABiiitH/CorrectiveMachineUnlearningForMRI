@@ -73,6 +73,7 @@ class MriModule(LightningModule):
         self.logger.experiment[name].log(File.as_image(image.cpu()), name=key)
         
     def on_validation_epoch_end(self) -> None:
+        
         losses = []
         mse_vals = defaultdict(dict)
         target_norms = defaultdict(dict)
@@ -168,7 +169,7 @@ class MriModule(LightningModule):
         
         for log in self.test_step_outputs:
             for i, (fname, slice_num) in enumerate(zip(log['fname'], log['slice_num'])):
-                outputs[fname][slice_num] = log['output'][i]#.cpu()
+                outputs[fname][int(slice_num.cpu())] = log["output"][i]#.cpu()
                 
         # stack all the slices for each file
         for fname in outputs:
@@ -181,10 +182,11 @@ class MriModule(LightningModule):
         else:
             save_dir = Path.cwd()/ dir_name
             
-        self.print(f"Savings reconstructions to {save_dir}")
+        self.print(f"Saving reconstructions to {save_dir}")
         
         save_reconstructions(outputs, save_dir)
         df.to_csv(str(save_dir) + '/' + dir_name+'.csv', mode='a', header=False)
+
 
         
 if __name__ == "__main__":

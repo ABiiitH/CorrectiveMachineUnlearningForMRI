@@ -139,7 +139,7 @@ class SliceDataset(torch.utils.data.Dataset):
                 metadata, num_slices = self._retrieve_metadata(fname)
                 
                 new_raw_samples = []
-                for slice_ind in range(num_slices)[5:-5]:
+                for slice_ind in range(num_slices)[:]:
                     raw_sample = FastMRIRawDataSample(fname, slice_ind, metadata)
                     if self.raw_sample_filter(raw_sample):
                         new_raw_samples.append(raw_sample)

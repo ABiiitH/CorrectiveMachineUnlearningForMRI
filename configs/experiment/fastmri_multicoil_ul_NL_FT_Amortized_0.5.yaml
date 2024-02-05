@@ -33,10 +33,14 @@ callbacks:
     monitor: "train/loss"
 
 data:
-  dataset_cache_file: "knee_forget.pkl"
+  dataset_cache_file: "0.1_brain_knee_mixed.pkl"
   batch_size: 1
 
 logger:
   comet:
     project_name: "fastmri-multicoil-unlearning"
 
+model:
+  ga: false
+  l1_reg: true
+  armotized: 0.01

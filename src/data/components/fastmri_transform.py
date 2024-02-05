@@ -166,6 +166,7 @@ class VarNetDataTransform:
         mask_func: Optional[MaskFunc] = None,
         use_seed: bool = True,
         noisy_label: bool = False,
+        _lambda: float = 1e-5
     ):
         """
 
@@ -189,6 +190,7 @@ class VarNetDataTransform:
         self.challenge = challenge
         self.use_seed = use_seed
         self.noisy_label = noisy_label
+        self._lambda = _lambda
         
     def __call__(
         self,
@@ -218,7 +220,7 @@ class VarNetDataTransform:
         if target is not None:
             target_torch = to_tensor(target)
             if self.noisy_label and fname.startswith("file1"):
-                target_torch = torch.randn_like(target_torch)
+                target_torch += torch.abs(torch.randn_like(target_torch) * self._lambda)
 
             max_value = attrs["max"] if "max" in attrs.keys() else 0.0
         else:

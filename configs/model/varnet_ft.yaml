@@ -1,11 +1,10 @@
-_target_: src.models.varnet_module.VarNetModule
+_target_: src.models.varnet_module.VarNetFTModule
 
 optimizer:
-  _target_: torch.optim.SGD
+  _target_: torch.optim.Adam
   _partial_: true
-  lr: 0.0001
-  momentum: 0.9
-
+  lr: 0.001
+  weight_decay: 0.0
 
 scheduler:
   _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
@@ -25,3 +24,5 @@ net:
 
 # compile model for faster training with pytorch 2.0
 compile: false
+
+ga: false

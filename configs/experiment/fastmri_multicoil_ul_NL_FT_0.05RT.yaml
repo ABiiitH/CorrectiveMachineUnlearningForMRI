@@ -33,7 +33,7 @@ callbacks:
     monitor: "train/loss"
 
 data:
-  dataset_cache_file: "knee_forget.pkl"
+  dataset_cache_file: "brain_knee_mixed_5per_v1.pkl"
   batch_size: 1
 
 logger:

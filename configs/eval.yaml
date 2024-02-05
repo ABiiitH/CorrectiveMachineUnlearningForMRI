@@ -12,7 +12,7 @@ defaults:
   - hydra: default
   - transforms: fastmri
 
-  - experiment: fastmri_multicoil_knee_testing
+  - experiment: fastmri_multicoil_forget_testing
 
 
 task_name: "Evaluation"
@@ -24,6 +24,5 @@ logger:
     project_name: "fastmri-multicoil-evaluation"
 
 # passing checkpoint path is necessary for evaluation
-ckpt_path: "/home/s2287251/data2/Users/Yuyang/Projects/ReconUnlearning/logs/Oracle/Oracle_ckpts/checkpoints/epoch_048_step_289002.ckpt"
-
+ckpt_path: "/localdisk/data2/Users/Yuyang/Projects/ReconUnlearning/logs/FineTuning/UL_0.1_GA_L1_FT/checkpoints/epoch_053_step_320856.ckpt"
 seed: 42

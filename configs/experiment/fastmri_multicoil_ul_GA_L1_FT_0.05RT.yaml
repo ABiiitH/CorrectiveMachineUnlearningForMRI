@@ -8,7 +8,7 @@ defaults:
   - override /model: varnet_ft
   - override /callbacks: default
   - override /trainer: gpu
-  - override /transforms: fastmri_noisy_label
+  - override /transforms: fastmri
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
@@ -33,10 +33,13 @@ callbacks:
     monitor: "train/loss"
 
 data:
-  dataset_cache_file: "knee_forget.pkl"
+  dataset_cache_file: "brain_knee_mixed_5per_v1.pkl"
   batch_size: 1
 
 logger:
   comet:
     project_name: "fastmri-multicoil-unlearning"
 
+model:
+  ga: true
+  l1_reg: true
