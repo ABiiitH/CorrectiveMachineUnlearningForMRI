@@ -16,7 +16,7 @@ defaults:
 
   # experiment configs allow for version control of specific hyperparameters
   # e.g. best hyperparameters for given model and datamodule
-  - experiment: fastmri_multicoil_ul_GA
+  - experiment: fastmri_multicoil_ul_NL_plus
 
   # config for hyperparameter optimization
   - hparams_search: null

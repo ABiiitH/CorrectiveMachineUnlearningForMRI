@@ -9,6 +9,7 @@ import contextlib
 import numpy as np
 import torch
 
+
 class MaskFunc:
     """
     An object for GRAPPA-style sampling masks.
@@ -562,18 +563,23 @@ def fetch_dir(
     return Path(data_dir)
 
 
-def apply_mask(data: torch.Tensor, mask_func: MaskFunc, offset: Optional[int]=None, 
-                seed: Optional[Union[int, Tuple[int, ...]]]=None, padding: Optional[Sequence[int]]=None):
-    
-    shape = (1,) * len(data.shape[:-3]) + tuple(data.shape[-3:]) # (1, 1, 640, 372, 2)
+def apply_mask(
+    data: torch.Tensor,
+    mask_func: MaskFunc,
+    offset: Optional[int] = None,
+    seed: Optional[Union[int, Tuple[int, ...]]] = None,
+    padding: Optional[Sequence[int]] = None,
+):
+
+    shape = (1,) * len(data.shape[:-3]) + tuple(data.shape[-3:])  # (1, 1, 640, 372, 2)
     mask, num_low_freqs = mask_func(shape, offset, seed)
     if padding is not None:
-        mask[..., :padding[0], :] = 0
-        mask[..., padding[1]:, :] = 0
-        
-    # * add 0.0 removes the sign of the zeros    
-    masked_data = data * mask + 0.0 
-    
+        mask[..., : padding[0], :] = 0
+        mask[..., padding[1] :, :] = 0
+
+    # * add 0.0 removes the sign of the zeros
+    masked_data = data * mask + 0.0
+
     return masked_data, mask, num_low_freqs
 
 
@@ -833,5 +839,3 @@ def normalize_instance(
     std = data.std()
 
     return normalize(data, mean, std, eps), mean, std
-
-

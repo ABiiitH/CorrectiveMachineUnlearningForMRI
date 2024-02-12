@@ -4,6 +4,7 @@ Copyright (c) Facebook, Inc. and its affiliates.
 This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
+
 import math
 from typing import List, Tuple, Optional
 import torch
@@ -17,6 +18,7 @@ from src.mri_utils.math import complex_mul, complex_conj, complex_abs
 
 
 from .unet import Unet
+
 
 class NormUnet(nn.Module):
     """
@@ -44,15 +46,15 @@ class NormUnet(nn.Module):
             drop_prob: Dropout probability.
         """
         super().__init__()
-        
+
         self.unet = Unet(
-            in_chans = in_chans,
-            out_chans = out_chans,
-            chans = chans,
-            num_pool_layers = num_pools,
-            drop_prob = drop_prob,
+            in_chans=in_chans,
+            out_chans=out_chans,
+            chans=chans,
+            num_pool_layers=num_pools,
+            drop_prob=drop_prob,
         )
-        
+
     def complex_to_chan_dim(self, x: torch.Tensor) -> torch.Tensor:
         b, c, h, w, two = x.shape
         assert two == 2
@@ -106,7 +108,7 @@ class NormUnet(nn.Module):
         w_mult: int,
     ) -> torch.Tensor:
         return x[..., h_pad[0] : h_mult - h_pad[1], w_pad[0] : w_mult - w_pad[1]]
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if not x.shape[-1] == 2:
             raise ValueError("Last dimension must be 2 for complex.")
@@ -124,25 +126,26 @@ class NormUnet(nn.Module):
         x = self.chan_complex_to_last_dim(x)
 
         return x
-    
-    
+
+
 class SensitivityModel(nn.Module):
     """
     Model for learning sensitivity estimation from k-space data.
 
     This model applies an IFFT to multichannel k-space data and then a U-Net
-    to the coil images to estimate coil sensitivities. 
+    to the coil images to estimate coil sensitivities.
     It can be used with the end-to-end variational network.
     """
-    
+
     def __init__(
-	    self, 
+        self,
         chans: int,
         num_pools: int,
-        in_chans:int = 2,
+        in_chans: int = 2,
         out_chans: int = 2,
         drop_prob: float = 0.0,
-        mask_center: bool = True):
+        mask_center: bool = True,
+    ):
         """
 
         Args:
@@ -154,7 +157,7 @@ class SensitivityModel(nn.Module):
             mask_center: Whether to mask center of k-space for sensitivity map
                 calculation.
         """
-        
+
         super().__init__()
         self.mask_center = mask_center
         self.norm_unet = NormUnet(
@@ -164,7 +167,7 @@ class SensitivityModel(nn.Module):
             out_chans=out_chans,
             drop_prob=drop_prob,
         )
-        
+
     def chans_to_batch_dim(self, x: torch.Tensor) -> Tuple[torch.Tensor, int]:
         b, c, h, w, comp = x.shape
 
@@ -175,14 +178,14 @@ class SensitivityModel(nn.Module):
         c = bc // batch_size
 
         return x.view(batch_size, c, h, w, comp)
-    
+
     def divide_root_sum_of_squares(self, x: torch.Tensor) -> torch.Tensor:
         return x / rss_complex(x, dim=1).unsqueeze(-1).unsqueeze(1)
-    
+
     def get_pad_and_num_low_freqs(
         self, mask: torch.Tensor, num_low_frequencies: Optional[int] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        
+
         if num_low_frequencies is None:
             # get low frequency line locations and mask them out
             squeezed_mask = mask[:, 0, 0, :, 0].to(torch.int8)
@@ -201,20 +204,19 @@ class SensitivityModel(nn.Module):
         pad = (mask.shape[-2] - num_low_frequencies_tensor + 1) // 2
 
         return pad.type(torch.long), num_low_frequencies_tensor.type(torch.long)
-        
+
     def forward(
-        self, 
-        masked_kspace: torch.Tensor, 
-        mask: torch.Tensor, 
-        num_low_frequencies: Optional[int]=None) -> torch.Tensor:
+        self,
+        masked_kspace: torch.Tensor,
+        mask: torch.Tensor,
+        num_low_frequencies: Optional[int] = None,
+    ) -> torch.Tensor:
         if self.mask_center:
             pad, num_low_freqs = self.get_pad_and_num_low_freqs(
                 mask, num_low_frequencies
             )
-            masked_kspace = batched_mask_center(
-                masked_kspace, pad, pad + num_low_freqs
-            )
-            
+            masked_kspace = batched_mask_center(masked_kspace, pad, pad + num_low_freqs)
+
         # convert to image space
         images, batches = self.chans_to_batch_dim(ifft2c(masked_kspace))
 
@@ -223,51 +225,53 @@ class SensitivityModel(nn.Module):
             self.batch_chans_to_chan_dim(self.norm_unet(images), batches)
         )
 
-               
+
 class VarNetBlock(nn.Module):
     """
     Model block for end-to-end variational network.
-    
+
     This model applies a combination of soft data consistency with the input
-    model as a regularizer. 
+    model as a regularizer.
     A series of these blocks can be stacked to form the full variational network.
     """
-    
+
     def __init__(self, model: nn.Module):
-    
+
         super().__init__()
         self.model = model
         self.dc_weight = nn.Parameter(torch.ones(1))
 
-    def sens_expand(self, x: torch.Tensor, sens_maps: torch.Tensor)-> torch.Tensor:
+    def sens_expand(self, x: torch.Tensor, sens_maps: torch.Tensor) -> torch.Tensor:
         return fft2c(complex_mul(x, sens_maps))
-    
-    def sens_reduce(self, x:torch.Tensor, sens_maps: torch.Tensor)->torch.Tensor:
+
+    def sens_reduce(self, x: torch.Tensor, sens_maps: torch.Tensor) -> torch.Tensor:
         return complex_mul(ifft2c(x), complex_conj(sens_maps)).sum(dim=1, keepdim=True)
-    
+
     def forward(
         self,
-        current_kspace: torch.Tensor, # b, c, h, w, comp
+        current_kspace: torch.Tensor,  # b, c, h, w, comp
         ref_kspace: torch.Tensor,
         mask: torch.Tensor,
         sens_maps: torch.Tensor,
     ) -> torch.Tensor:
         zero = torch.zeros(1, 1, 1, 1, 1).to(current_kspace)
         soft_dc = torch.where(mask, current_kspace - ref_kspace, zero) * self.dc_weight
-        model_term = self.sens_expand(self.model(self.sens_reduce(current_kspace, sens_maps)), sens_maps)
-        
+        model_term = self.sens_expand(
+            self.model(self.sens_reduce(current_kspace, sens_maps)), sens_maps
+        )
+
         return current_kspace - soft_dc - model_term
-    
-    
+
+
 class VarNet(nn.Module):
     """
     A full variational network model.
 
     This model applies a combination of soft data consistency with a U-Net
-    regularizer. 
+    regularizer.
     To use non-U-Net regularizers, use VarNetBlock.
     """
-    
+
     def __init__(
         self,
         num_cascades: int = 12,
@@ -292,7 +296,7 @@ class VarNet(nn.Module):
                 calculation.
         """
         super().__init__()
-        
+
         self.sens_net = SensitivityModel(
             chans=sens_chans,
             num_pools=sens_pools,
@@ -301,16 +305,16 @@ class VarNet(nn.Module):
         self.cascades = nn.ModuleList(
             [VarNetBlock(NormUnet(chans, pools)) for _ in range(num_cascades)]
         )
-        
+
     def forward(
         self,
         masked_kspace: torch.Tensor,
         mask: torch.Tensor,
-        num_low_frequencies: Optional[int]=None,
-    )-> torch.Tensor:
+        num_low_frequencies: Optional[int] = None,
+    ) -> torch.Tensor:
         sens_maps = self.sens_net(masked_kspace, mask, num_low_frequencies)
         kspace_pred = masked_kspace.clone()
         for cascade in self.cascades:
             kspace_pred = cascade(kspace_pred, masked_kspace, mask, sens_maps)
-            
+
         return rss(complex_abs(ifft2c(kspace_pred)), dim=1)

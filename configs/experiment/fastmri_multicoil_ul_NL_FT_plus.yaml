@@ -1,0 +1,42 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /data: fastmri_multicoil
+  - override /model: varnet_ft
+  - override /callbacks: default
+  - override /trainer: gpu
+  - override /transforms: fastmri_noisy_label
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["fastmri_brain", "fastmri_knee", "varnet"]
+
+seed: 42
+
+trainer:
+  max_epochs: 56
+  gradient_clip_val: 0.5
+  limit_val_batches: 0
+  num_sanity_val_steps: 0
+
+callbacks:
+  model_checkpoint:
+    monitor: "train/loss"
+    save_on_train_epoch_end: true
+    save_top_k: -1
+    every_n_epochs: 1
+  early_stopping:
+    monitor: "train/loss"
+
+data:
+  dataset_cache_file: "0.1_brain_knee_mixed.pkl"
+  batch_size: 1
+
+logger:
+  comet:
+    project_name: "fastmri-multicoil-unlearning"
+

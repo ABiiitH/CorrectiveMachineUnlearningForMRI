@@ -1,5 +1,6 @@
 import torch
 
+
 def l1_regularization(model):
     params_vec = []
     for param in model.parameters():

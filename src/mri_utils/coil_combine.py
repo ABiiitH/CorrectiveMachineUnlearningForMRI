@@ -8,6 +8,7 @@ LICENSE file in the root directory of this source tree.
 import torch
 from src.mri_utils.math import complex_abs_sq
 
+
 def rss(data: torch.Tensor, dim: int = 0) -> torch.Tensor:
     """
     Compute the Root Sum of Squares (RSS).

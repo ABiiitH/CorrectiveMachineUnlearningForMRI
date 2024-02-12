@@ -17,6 +17,7 @@ from src.utils import pylogger
 
 log = pylogger.RankedLogger(__name__, rank_zero_only=True)
 
+
 def worker_init_fn(worker_id):
     """Handle random seeding for all mask_func."""
     worker_info = torch.utils.data.get_worker_info()
@@ -56,7 +57,7 @@ class SliceDataset(torch.utils.data.Dataset):
     """
     A PyTorch Dataset that provides access to FastMRI slices.
     """
-    
+
     def __init__(
         self,
         root: Union[str, Path, os.PathLike],
@@ -67,35 +68,35 @@ class SliceDataset(torch.utils.data.Dataset):
         volume_sample_rate: Optional[float] = None,
         dataset_cache_file: Union[str, Path, os.PathLike] = "dataset_cache.pkl",
         num_cols: Optional[Tuple[int]] = None,
-        raw_sample_filter: Optional[Callable] = None
+        raw_sample_filter: Optional[Callable] = None,
     ):
         """
 
         Args:
             root (Union[str, Path, os.PathLike]): Path to the dataset
             challenge (str): "singlecoil" or "multicoil"
-            transform (Optional[Callable], optional): 
+            transform (Optional[Callable], optional):
                 Optional; A callable object that pre-processes the raw data
                 into appropriate form. The transform function should take
                 'kspace', 'target', 'attributes', 'filename', and 'slice' as
                 inputs. 'target' may be null for test data
-            use_dataset_cache (bool, optional): 
+            use_dataset_cache (bool, optional):
                 Whether to cache dataset metadata. This is very
                 useful for large datasets like the brain data.
-            sample_rate (Optional[float], optional): 
+            sample_rate (Optional[float], optional):
                 Optional; A float between 0 and 1. This controls what fraction
                 of the slices should be loaded. Defaults to 1 if no value is given.
                 When creating a sampled dataset either set sample_rate (sample by slices)
                 or volume_sample_rate (sample by volumes) but not both.
-            volume_sample_rate (Optional[float], optional): 
+            volume_sample_rate (Optional[float], optional):
                 Optional; A float between 0 and 1. This controls what fraction
                 of the volumes should be loaded. Defaults to 1 if no value is given.
                 When creating a sampled dataset either set sample_rate (sample by slices)
                 or volume_sample_rate (sample by volumes) but not both.
-            dataset_cache_file (Union[str, Path, os.PathLike], optional): 
-                Optional; A file in which to cache dataset information for faster load times. 
+            dataset_cache_file (Union[str, Path, os.PathLike], optional):
+                Optional; A file in which to cache dataset information for faster load times.
                 Defaults to "dataset_cache.pkl".
-            num_cols (Optional[Tuple[int]], optional): 
+            num_cols (Optional[Tuple[int]], optional):
                 Optional; If provided, only slices with the desired
                 number of columns will be considered.
             raw_sample_filter (Optional[Callable], optional):
@@ -105,19 +106,23 @@ class SliceDataset(torch.utils.data.Dataset):
 
 
         Returns:
-            torch.Tensor: Data sample 
+            torch.Tensor: Data sample
         """
-        
+
         if challenge not in ("singlecoil", "multicoil"):
             raise ValueError(f'Challenge should be either "singlecoil" or "multicoil"')
-        
+
         if sample_rate is not None and volume_sample_rate is not None:
-            raise ValueError("Either sample_rate or volume_sample_rate should be set but not both.")
-        
+            raise ValueError(
+                "Either sample_rate or volume_sample_rate should be set but not both."
+            )
+
         Path("data/caches/").mkdir(parents=True, exist_ok=True)
-        self.dataset_cache_file = Path('data/caches/' + dataset_cache_file)
+        self.dataset_cache_file = Path("data/caches/" + dataset_cache_file)
         self.transform = transform
-        self.recons_key = "reconstruction_rss" if challenge == "multicoil" else "reconstruction_esc"
+        self.recons_key = (
+            "reconstruction_rss" if challenge == "multicoil" else "reconstruction_esc"
+        )
         self.raw_samples = []
         if raw_sample_filter is None:
             self.raw_sample_filter = lambda raw_sample: True
@@ -130,39 +135,39 @@ class SliceDataset(torch.utils.data.Dataset):
                 dataset_cache = pickle.load(f)
         else:
             dataset_cache = {}
-                
+
         # check if our dataset is in the cache
         # if there use that metadata, if not then regenerate the metadata
         if dataset_cache.get(root) is None or not use_dataset_cache:
             files = list(Path(root).iterdir())
             for fname in sorted(files):
                 metadata, num_slices = self._retrieve_metadata(fname)
-                
+
                 new_raw_samples = []
                 for slice_ind in range(num_slices)[:]:
                     raw_sample = FastMRIRawDataSample(fname, slice_ind, metadata)
                     if self.raw_sample_filter(raw_sample):
                         new_raw_samples.append(raw_sample)
-                        
+
                 self.raw_samples += new_raw_samples
-                
+
             if dataset_cache.get(root) is None and use_dataset_cache:
                 dataset_cache[root] = self.raw_samples
                 log.info(f"Saving dataset cache to {self.dataset_cache_file}")
                 with open(self.dataset_cache_file, "wb") as cache_f:
                     pickle.dump(dataset_cache, cache_f)
-                    
+
         else:
             log.info(f"Using dataset cache from {self.dataset_cache_file}")
             self.raw_samples = dataset_cache[root]
-            
+
         # set default sampling mode if none given
         if sample_rate is None:
             sample_rate = 1.0
         if volume_sample_rate is None:
             volume_sample_rate = 1.0
-            
-        if sample_rate < 1.0: # sample by slice
+
+        if sample_rate < 1.0:  # sample by slice
             random.shuffle(self.raw_samples)
             num_raw_samples = round(len(self.raw_samples) * sample_rate)
             self.raw_samples = self.raw_samples[:num_raw_samples]
@@ -176,13 +181,12 @@ class SliceDataset(torch.utils.data.Dataset):
                 for raw_sample in self.raw_samples
                 if raw_sample[0].stem in sampled_vols
             ]
-            
+
         if num_cols:
             self.raw_samples = [
-                ex for ex in self.raw_samples 
-                if ex[2]["encoding_size"][1] in num_cols
+                ex for ex in self.raw_samples if ex[2]["encoding_size"][1] in num_cols
             ]
-                
+
     @staticmethod
     def _retrieve_metadata(fname):
         with h5py.File(fname, "r") as hf:
@@ -219,26 +223,26 @@ class SliceDataset(torch.utils.data.Dataset):
             }
 
         return metadata, num_slices
-    
+
     def __len__(self):
         return len(self.raw_samples)
-    
-    def __getitem__(self, i:int):
+
+    def __getitem__(self, i: int):
         fname, dataslice, metadata = self.raw_samples[i]
-        
+
         with h5py.File(fname, "r") as hf:
             kspace = hf["kspace"][dataslice]
             mask = np.asarray(hf["mask"]) if "mask" in hf else None
             target = hf[self.recons_key][dataslice] if self.recons_key in hf else None
-            
+
             attrs = dict(hf.attrs)
             attrs.update(metadata)
-            
+
         if self.transform:
             sample = self.transform(kspace, mask, target, attrs, fname.name, dataslice)
         else:
             sample = (kspace, mask, target, attrs, fname.name, dataslice)
-            
+
         return sample
 
 
@@ -341,18 +345,18 @@ class VolumeSampler(Sampler):
 
     def set_epoch(self, epoch):
         self.epoch = epoch
-            
+
 
 class FastMRIDataModule(LightningDataModule):
     """
     `LightningDataModule` for the FastMRI dataset.
-    
+
     This class handles configurations for training on fastMRI data. It is set
     up to process configurations independently of training modules.
-    
+
     Note that subsampling mask and transform configurations are expected to be
     done by the main client training scripts and passed into this data module.
-    
+
     For training with ddp be sure to set distributed_sampler=True to make sure
     that volumes are dispatched to the same GPU for the validation loop.
 
@@ -384,7 +388,7 @@ class FastMRIDataModule(LightningDataModule):
         # Clean up after fit or test.
     ```
     """
-    
+
     def __init__(
         self,
         data_path: str,
@@ -392,8 +396,8 @@ class FastMRIDataModule(LightningDataModule):
         train_transform: Callable,
         val_transform: Callable,
         test_transform: Callable,
-        #combine_train_val: bool = False,
-        test_split: str="test",
+        # combine_train_val: bool = False,
+        test_split: str = "test",
         test_path: Optional[str] = None,
         sample_rate: Optional[float] = None,
         val_sample_rate: Optional[float] = None,
@@ -422,9 +426,9 @@ class FastMRIDataModule(LightningDataModule):
             val_transform (Callable): A transform object for the validation split.
             test_transform (Callable): A transform object for the test split.
             test_split (str, optional): Name of test split from ("test", "challenge").
-            test_path (Optional[str], optional): 
+            test_path (Optional[str], optional):
                 An optional test path. Passing this overwrites data_path and test_split.
-            sample_rate (Optional[float], optional): 
+            sample_rate (Optional[float], optional):
                 Fraction of slices of the training data split to use.
                 Can be set to less than 1.0 for rapid prototyping. If not set,
                 it defaults to 1.0. To subsample the dataset either set
@@ -432,33 +436,33 @@ class FastMRIDataModule(LightningDataModule):
                 volume), but not both.
             val_sample_rate (Optional[float], optional): Same as sample_rate, but for val split.
             test_sample_rate (Optional[float], optional): Same as sample_rate, but for test split.
-            volume_sample_rate (Optional[float], optional): 
+            volume_sample_rate (Optional[float], optional):
                 Fraction of volumes of the training data split
                 to use. Can be set to less than 1.0 for rapid prototyping. If
                 not set, it defaults to 1.0. To subsample the dataset either
                 set sample_rate (sample by slice) or volume_sample_rate (sample
                 by volume), but not both.
-            val_volume_sample_rate (Optional[float], optional): 
+            val_volume_sample_rate (Optional[float], optional):
                 Same as volume_sample_rate, but for val split.
             test_volume_sample_rate (Optional[float], optional):
                 Same as volume_sample_rate, but for test split.
-            train_filter (Optional[Callable], optional): 
-                A callable which takes as input a training example metadata, 
+            train_filter (Optional[Callable], optional):
+                A callable which takes as input a training example metadata,
                 and returns whether it should be part of the training dataset.
             val_filter (Optional[Callable], optional): Same as train_filter, but for val split.
             test_filter (Optional[Callable], optional): Same as train_filter, but for test split.
-            use_dataset_cache_file (bool, optional): 
+            use_dataset_cache_file (bool, optional):
                 Whether to cache dataset metadata. This is
                 very useful for large datasets like the brain data.
-            dataset_cache_file (str, optional): 
+            dataset_cache_file (str, optional):
                 The filename of the dataset cache file.
             batch_size (int, optional): Batch size.
             num_workers (int, optional): Number of workers for PyTorch dataloader.
-            distributed_sampler (bool, optional): 
+            distributed_sampler (bool, optional):
                 Whether to use a distributed sampler. This should be set to True if training with ddp.
         """
         super().__init__()
-        
+
         if _check_both_not_none(sample_rate, volume_sample_rate):
             raise ValueError("Can set sample_rate or volume_sample_rate, but not both.")
         if _check_both_not_none(val_sample_rate, val_volume_sample_rate):
@@ -469,11 +473,11 @@ class FastMRIDataModule(LightningDataModule):
             raise ValueError(
                 "Can set test_sample_rate or test_volume_sample_rate, but not both."
             )
-        
+
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(ignore=['net'])
-        
+        self.save_hyperparameters(ignore=["net"])
+
         self.data_path = Path(data_path)
         self.challenge = challenge
         self.train_transform = train_transform
@@ -498,46 +502,56 @@ class FastMRIDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.distributed_sampler = distributed_sampler
-        
+
     def _create_data_loader(
-            self,
-            data_transform: Callable,
-            data_partition: str,
-            sample_rate: Optional[float] = None,
-            volume_sample_rate: Optional[float] = None,
-        ) -> torch.utils.data.DataLoader:
+        self,
+        data_transform: Callable,
+        data_partition: str,
+        sample_rate: Optional[float] = None,
+        volume_sample_rate: Optional[float] = None,
+    ) -> torch.utils.data.DataLoader:
         if data_partition == "train":
             is_train = True
             sample_rate = self.sample_rate if sample_rate is None else sample_rate
             volume_sample_rate = (
-                self.volume_sample_rate if volume_sample_rate is None else volume_sample_rate
+                self.volume_sample_rate
+                if volume_sample_rate is None
+                else volume_sample_rate
             )
             raw_sample_filter = self.train_filter
         else:
             is_train = False
             if data_partition == "val":
-                sample_rate = self.val_sample_rate if sample_rate is None else sample_rate
+                sample_rate = (
+                    self.val_sample_rate if sample_rate is None else sample_rate
+                )
                 volume_sample_rate = (
-                    self.val_volume_sample_rate if volume_sample_rate is None else volume_sample_rate
+                    self.val_volume_sample_rate
+                    if volume_sample_rate is None
+                    else volume_sample_rate
                 )
                 raw_sample_filter = self.val_filter
-                
+
             elif data_partition == "test":
-                sample_rate = self.test_sample_rate if sample_rate is None else sample_rate
+                sample_rate = (
+                    self.test_sample_rate if sample_rate is None else sample_rate
+                )
                 volume_sample_rate = (
-                    self.test_volume_sample_rate if volume_sample_rate is None else volume_sample_rate
+                    self.test_volume_sample_rate
+                    if volume_sample_rate is None
+                    else volume_sample_rate
                 )
                 raw_sample_filter = self.test_filter
-                
+
             else:
                 raise ValueError(f"Invalid data partition {data_partition}")
-            
+
         dataset: SliceDataset
         if data_partition in ("test", "challenge") and self.test_path is not None:
             data_path = Path(self.test_path)
         else:
             data_path = self.data_path / f"{self.challenge}_{data_partition}"
-            
+
         dataset = SliceDataset(
             root=data_path,
             challenge=self.challenge,
@@ -549,7 +563,7 @@ class FastMRIDataModule(LightningDataModule):
             num_cols=self.num_cols,
             raw_sample_filter=raw_sample_filter,
         )
-        
+
         sampler = None
 
         if self.distributed_sampler:
@@ -568,10 +582,10 @@ class FastMRIDataModule(LightningDataModule):
         )
 
         return dataloader
-    
+
     def prepare_data(self):
         """
-        rank 0 ddp process. 
+        rank 0 ddp process.
         """
         if self.use_dataset_cache_file:
             if self.test_path is not None:
@@ -603,9 +617,9 @@ class FastMRIDataModule(LightningDataModule):
                     volume_sample_rate=volume_sample_rate,
                     dataset_cache_file=self.dataset_cache_file,
                     num_cols=self.num_cols,
-                    #raw_sample_filter=raw_sample_filter,
+                    # raw_sample_filter=raw_sample_filter,
                 )
-                
+
     def train_dataloader(self):
         return self._create_data_loader(self.train_transform, data_partition="train")
 
@@ -613,4 +627,6 @@ class FastMRIDataModule(LightningDataModule):
         return self._create_data_loader(self.val_transform, data_partition="val")
 
     def test_dataloader(self):
-        return self._create_data_loader(self.test_transform, data_partition=self.test_split)
+        return self._create_data_loader(
+            self.test_transform, data_partition=self.test_split
+        )

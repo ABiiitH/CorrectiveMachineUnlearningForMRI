@@ -4,7 +4,10 @@ from collections import defaultdict
 import torch
 import numpy as np
 
-from src.data.components.fastmri_transform_utils import center_crop_to_smallest, center_crop
+from src.data.components.fastmri_transform_utils import (
+    center_crop_to_smallest,
+    center_crop,
+)
 from src.models.components.utils import l1_regularization
 from src.models.mri_module import MriModule
 from src.models.losses.ssim import SSIMLoss
@@ -21,21 +24,21 @@ class VarNetModule(MriModule):
         ga: bool = False,
         l1_reg: bool = False,
         armotized: float = 1.0,
-        **kwargs
+        **kwargs,
     ):
-        super().__init__( **kwargs)
-        self.save_hyperparameters(logger=True, ignore=['net'])
+        super().__init__(**kwargs)
+        self.save_hyperparameters(logger=True, ignore=["net"])
         self.net = net
         self.ga = ga
         self.l1_reg = l1_reg
         self.armotized = armotized
-        
+
         self.l1loss = torch.nn.L1Loss()
         self.ssimloss = SSIMLoss()
-        
+
     def forward(self, masked_kspace, mask, num_low_frequencies):
         return self.net(masked_kspace, mask, num_low_frequencies)
-    
+
     def on_train_start(self) -> None:
         """Lightning hook that is called when training begins."""
         # by default lightning executes validation step sanity checks before training starts,
@@ -47,8 +50,9 @@ class VarNetModule(MriModule):
         self.TotExamples.reset()
         self.TotSliceExamples.reset()
         self.train_loss.reset()
-    
-    def model_step(self, batch: Tuple[torch.Tensor, torch.Tensor]
+
+    def model_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor]
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Perform a single model step on a batch of data.
 
@@ -63,9 +67,9 @@ class VarNetModule(MriModule):
         loss = self.ssimloss(
             output.unsqueeze(1), target.unsqueeze(1), data_range=batch.max_value
         ) + 1e-5 * self.l1loss(output.unsqueeze(1), target.unsqueeze(1))
-        
+
         return loss, output, target
-    
+
     def training_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
     ) -> torch.Tensor:
@@ -77,10 +81,10 @@ class VarNetModule(MriModule):
 
         :return: A tensor of losses.
         """
-        
+
         loss, _, _ = self.model_step(batch)
         if self.ga and batch.fname[0].startswith("file1"):
-            loss *= -1 
+            loss *= -1
         if self.l1_reg and batch.fname[0].startswith("file1"):
             loss += loss + l1_regularization(self.net)
         if self.armotized and batch.fname[0].startswith("file1"):
@@ -91,22 +95,23 @@ class VarNetModule(MriModule):
         #     if param.requires_grad:
         #         print(name, param.grad)
         return loss
-    
+
     def on_train_epoch_end(self) -> None:
         "Lightning hook that is called when a training epoch ends."
         pass
-    
-    def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+
+    def validation_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> None:
         """Perform a single validation step on a batch of data from the validation set.
 
         :param batch: A batch of data (a tuple) containing the input tensor of images and target
             labels.
         :param batch_idx: The index of the current batch.
         """
-        
+
         loss, output, target = self.model_step(batch)
         # update and log metrics
-        
 
         if output.ndim == 2:
             output = output.unsqueeze(0)
@@ -116,8 +121,7 @@ class VarNetModule(MriModule):
             target = target.unsqueeze(0)
         elif target.ndim != 3:
             raise RuntimeError("Unexpected output size from validation_step.")
-        
-        
+
         # pick a set of images to log if we don't have one already
         if self.val_log_indices is None:
             self.val_log_indices = list(
@@ -125,13 +129,13 @@ class VarNetModule(MriModule):
                     : self.num_log_images
                 ]
             )
-            
+
         # log images to logger
         if isinstance(batch_idx, int):
             batch_indices = [batch_idx]
         else:
             batch_indices = batch_idx
-            
+
         for i, batch_idx in enumerate(batch_indices):
             if batch_idx in self.val_log_indices:
                 key = f"val_image_idx_{batch_idx}"
@@ -141,7 +145,7 @@ class VarNetModule(MriModule):
                 output_vis = output_vis / output_vis.max()
                 target_vis = target_vis / target_vis.max()
                 error_vis = error_vis / error_vis.max()
-                
+
                 # for comet
                 self.log_image(f"{key}/target", target_vis)
                 self.log_image(f"{key}/reconstruction", output_vis)
@@ -151,43 +155,49 @@ class VarNetModule(MriModule):
                 # self.log_image_neptune("target", target[0], key)
                 # self.log_image_neptune("recon", output_vis[0], key)
                 # self.log_image_neptune("error", error[0], key)
-        
+
         mse_vals = defaultdict(dict)
         target_norms = defaultdict(dict)
         ssim_vals = defaultdict(dict)
         max_vals = dict()
-        
+
         for i, fname in enumerate(batch.fname):
             slice_num = int(batch.slice_num[i].cpu())
             maxval = batch.max_value[i].cpu().numpy()
             output_i = output[i].cpu().numpy()
             target_i = target[i].cpu().numpy()
-            
+
             mse_vals[fname][slice_num] = torch.tensor(mse(target_i, output_i)).view(1)
-            target_norms[fname][slice_num] = torch.tensor(mse(target_i, np.zeros_like(target_i))).view(1)
-            ssim_vals[fname][slice_num] = torch.tensor(ssim(target_i[None, ...], output_i[None, ...], maxval=maxval)).view(1)
+            target_norms[fname][slice_num] = torch.tensor(
+                mse(target_i, np.zeros_like(target_i))
+            ).view(1)
+            ssim_vals[fname][slice_num] = torch.tensor(
+                ssim(target_i[None, ...], output_i[None, ...], maxval=maxval)
+            ).view(1)
             max_vals[fname] = maxval
-        
+
         pred = {
             "val_loss": loss,
             "mse_vals": dict(mse_vals),
             "target_norms": dict(target_norms),
             "ssim_vals": dict(ssim_vals),
-            "max_vals": max_vals
+            "max_vals": max_vals,
         }
-        
+
         self.validation_step_outputs.append(pred)
-        
+
         return pred
-    
-    def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+
+    def test_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> None:
         """Perform a single validation step on a batch of data from the validation set.
 
         :param batch: A batch of data (a tuple) containing the input tensor of images and target
             labels.
         :param batch_idx: The index of the current batch.
         """
-        
+
         loss, output, target = self.model_step(batch)
         # check for FLAIR 203
         if output.shape[-1] < batch.crop_size[1]:
@@ -197,21 +207,25 @@ class VarNetModule(MriModule):
 
         output = center_crop(output, crop_size)
         target = center_crop(target, crop_size)
-        
+
         mse_vals = defaultdict(dict)
         target_norms = defaultdict(dict)
         ssim_vals = defaultdict(dict)
         max_vals = dict()
-        
+
         for i, fname in enumerate(batch.fname):
             slice_num = int(batch.slice_num[i].cpu())
             maxval = batch.max_value[i].cpu().numpy()
             output_i = output[i].cpu().numpy()
             target_i = target[i].cpu().numpy()
-            
+
             mse_vals[fname][slice_num] = torch.tensor(mse(target_i, output_i)).view(1)
-            target_norms[fname][slice_num] = torch.tensor(mse(target_i, np.zeros_like(target_i))).view(1)
-            ssim_vals[fname][slice_num] = torch.tensor(ssim(target_i[None, ...], output_i[None, ...], maxval=maxval)).view(1)
+            target_norms[fname][slice_num] = torch.tensor(
+                mse(target_i, np.zeros_like(target_i))
+            ).view(1)
+            ssim_vals[fname][slice_num] = torch.tensor(
+                ssim(target_i[None, ...], output_i[None, ...], maxval=maxval)
+            ).view(1)
             max_vals[fname] = maxval
 
         pred = {
@@ -221,12 +235,12 @@ class VarNetModule(MriModule):
             "mse_vals": dict(mse_vals),
             "target_norms": dict(target_norms),
             "ssim_vals": dict(ssim_vals),
-            "max_vals": max_vals
+            "max_vals": max_vals,
         }
         self.test_step_outputs.append(pred)
-        
+
         return pred
-    
+
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit (train + validate), validate,
         test, or predict.
@@ -238,7 +252,7 @@ class VarNetModule(MriModule):
         """
         if self.hparams.compile and stage == "fit":
             self.net = torch.compile(self.net)
-            
+
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.
         Normally you'd need one. But in the case of GANs or similar you might have multiple.
@@ -255,7 +269,7 @@ class VarNetModule(MriModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    #"monitor": "val/loss",
+                    # "monitor": "val/loss",
                     "monitor": "train/loss",
                     "interval": "epoch",
                     "frequency": 1,
@@ -265,16 +279,18 @@ class VarNetModule(MriModule):
 
 
 class VarNetFTModule(VarNetModule):
-    
-        
-    def validation_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
+
+    def validation_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
+    ) -> None:
         if self.current_epoch > 45:
             return
+
     def on_validation_epoch_end(self) -> None:
         "Lightning hook that is called when a validation epoch ends."
         if self.current_epoch > 45:
-            return 
-    
+            return
+
 
 if __name__ == "__main__":
     _ = VarNetModule()

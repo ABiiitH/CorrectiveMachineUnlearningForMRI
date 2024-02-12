@@ -45,7 +45,7 @@ class MriModule(LightningModule):
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(ignore=['net'])
+        self.save_hyperparameters(ignore=["net"])
 
         self.num_log_images = num_log_images
 
@@ -65,21 +65,21 @@ class MriModule(LightningModule):
         self.TotExamples = DistributedMetricSum()
         self.TotSliceExamples = DistributedMetricSum()
         self.train_loss = DistributedMetricSum()
-        
+
     def log_image(self, name, image):
         self.logger.experiment.log_image(image.cpu(), name)
-        
+
     def log_image_neptune(self, name, image, key):
         self.logger.experiment[name].log(File.as_image(image.cpu()), name=key)
-        
+
     def on_validation_epoch_end(self) -> None:
-        
+
         losses = []
         mse_vals = defaultdict(dict)
         target_norms = defaultdict(dict)
         ssim_vals = defaultdict(dict)
         max_vals = dict()
-        
+
         for val_log in self.validation_step_outputs:
             losses.append(val_log["val_loss"].view(-1))
 
@@ -112,9 +112,19 @@ class MriModule(LightningModule):
                 torch.cat([v.view(-1) for _, v in target_norms[fname].items()])
             )
             metrics["nmse"] = metrics["nmse"] + mse_val / target_norm
-            metrics["psnr"] = metrics["psnr"] + 20 * torch.log10(torch.tensor(max_vals[fname], dtype=mse_val.dtype, device=mse_val.device)) - 10 * torch.log10(mse_val)
-            metrics["ssim"] = metrics["ssim"] + torch.mean(torch.cat([v.view(-1) for _, v in ssim_vals[fname].items()]))
-
+            metrics["psnr"] = (
+                metrics["psnr"]
+                + 20
+                * torch.log10(
+                    torch.tensor(
+                        max_vals[fname], dtype=mse_val.dtype, device=mse_val.device
+                    )
+                )
+                - 10 * torch.log10(mse_val)
+            )
+            metrics["ssim"] = metrics["ssim"] + torch.mean(
+                torch.cat([v.view(-1) for _, v in ssim_vals[fname].items()])
+            )
 
         # reduce across ddp via sum
         metrics["nmse"] = self.NMSE(metrics["nmse"])
@@ -126,16 +136,18 @@ class MriModule(LightningModule):
             torch.tensor(len(losses), dtype=torch.float)
         )
 
-        self.log("val/loss", val_loss / tot_slice_examples, prog_bar=True, sync_dist=True)
+        self.log(
+            "val/loss", val_loss / tot_slice_examples, prog_bar=True, sync_dist=True
+        )
         for metric, value in metrics.items():
             self.log(f"val_metrics/{metric}", value / tot_examples, sync_dist=True)
-            
+
         self.validation_step_outputs.clear()
 
     def on_test_epoch_end(self):
         outputs = defaultdict(dict)
-        
-        df = pd.DataFrame(columns=['nmse', 'ssim', 'psnr'])
+
+        df = pd.DataFrame(columns=["nmse", "ssim", "psnr"])
         mse_vals = defaultdict(dict)
         target_norms = defaultdict(dict)
         ssim_vals = defaultdict(dict)
@@ -156,38 +168,59 @@ class MriModule(LightningModule):
         local_examples = 0
         for fname in mse_vals.keys():
             local_examples = local_examples + 1
-            mse_val = torch.mean(torch.cat([v.view(-1) for _, v in mse_vals[fname].items()])            )
-            target_norm = torch.mean(torch.cat([v.view(-1) for _, v in target_norms[fname].items()])            )
+            mse_val = torch.mean(
+                torch.cat([v.view(-1) for _, v in mse_vals[fname].items()])
+            )
+            target_norm = torch.mean(
+                torch.cat([v.view(-1) for _, v in target_norms[fname].items()])
+            )
             nmse_val = (mse_val / target_norm).cpu().numpy()
-            psnr_val = (20 * torch.log10(torch.tensor(max_vals[fname], dtype=mse_val.dtype, device=mse_val.device)) - 10 * torch.log10(mse_val)).cpu().numpy()
-            ssim_val = torch.mean(torch.cat([v.view(-1) for _, v in ssim_vals[fname].items()])).cpu().numpy()
+            psnr_val = (
+                (
+                    20
+                    * torch.log10(
+                        torch.tensor(
+                            max_vals[fname], dtype=mse_val.dtype, device=mse_val.device
+                        )
+                    )
+                    - 10 * torch.log10(mse_val)
+                )
+                .cpu()
+                .numpy()
+            )
+            ssim_val = (
+                torch.mean(torch.cat([v.view(-1) for _, v in ssim_vals[fname].items()]))
+                .cpu()
+                .numpy()
+            )
             nmse_list.append(nmse_val)
             psnr_list.append(psnr_val)
             ssim_list.append(ssim_val)
 
             df.loc[fname] = [nmse_val, psnr_val, ssim_val]
-        
+
         for log in self.test_step_outputs:
-            for i, (fname, slice_num) in enumerate(zip(log['fname'], log['slice_num'])):
-                outputs[fname][int(slice_num.cpu())] = log["output"][i]#.cpu()
-                
+            for i, (fname, slice_num) in enumerate(zip(log["fname"], log["slice_num"])):
+                outputs[fname][int(slice_num.cpu())] = log["output"][i]  # .cpu()
+
         # stack all the slices for each file
         for fname in outputs:
-            outputs[fname] = np.stack([out for _, out in sorted(outputs[fname].items())])
-            
-        #use the default_root_dir if we have a trainer, otherwise save to cwd
+            outputs[fname] = np.stack(
+                [out for _, out in sorted(outputs[fname].items())]
+            )
+
+        # use the default_root_dir if we have a trainer, otherwise save to cwd
         dir_name = "test_dataset"
         if hasattr(self, "trainer"):
             save_dir = Path(self.trainer.default_root_dir) / dir_name
         else:
-            save_dir = Path.cwd()/ dir_name
-            
+            save_dir = Path.cwd() / dir_name
+
         self.print(f"Saving reconstructions to {save_dir}")
-        
+
         save_reconstructions(outputs, save_dir)
-        df.to_csv(str(save_dir) + '/' + dir_name+'.csv', mode='a', header=False)
+        df.to_csv(str(save_dir) + "/" + dir_name + ".csv", mode="a", header=False)
 
 
-        
 if __name__ == "__main__":
     _ = MriModule(None)

@@ -9,7 +9,7 @@ from lightning import Callback, LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
 
-torch.set_float32_matmul_precision('medium')
+torch.set_float32_matmul_precision("medium")
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
@@ -55,28 +55,36 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     :return: Tuple[dict, dict] with metrics and dict with all instantiated objects.
     """
     assert cfg.ckpt_path
-	# set seed for random number generators in pytorch, numpy and python.random
+    # set seed for random number generators in pytorch, numpy and python.random
     if cfg.get("seed"):
         L.seed_everything(cfg.seed, workers=True)
-    
+
     log.info(f"Instantiating mask and transforms.")
-    
+
     mask = create_mask_for_mask_type(
-        cfg.transforms.mask_type_str, 
-        cfg.transforms.center_fractions, 
-        cfg.transforms.accelerations
+        cfg.transforms.mask_type_str,
+        cfg.transforms.center_fractions,
+        cfg.transforms.accelerations,
     )
     print(mask)
     # use random masks for train transform, fixed masks for val transform
-    train_transform = VarNetDataTransform(cfg.data.challenge, mask_func=mask, use_seed=False)
-    val_transform   = VarNetDataTransform(cfg.data.challenge, mask_func=mask, use_seed=True)
-    test_transform  = VarNetDataTransform(cfg.data.challenge, mask_func=mask, use_seed=True)
+    train_transform = VarNetDataTransform(
+        cfg.data.challenge, mask_func=mask, use_seed=False
+    )
+    val_transform = VarNetDataTransform(
+        cfg.data.challenge, mask_func=mask, use_seed=True
+    )
+    test_transform = VarNetDataTransform(
+        cfg.data.challenge, mask_func=mask, use_seed=True
+    )
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
-    datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data,
+    datamodule: LightningDataModule = hydra.utils.instantiate(
+        cfg.data,
         train_transform=train_transform,
         val_transform=val_transform,
-        test_transform=test_transform)
+        test_transform=test_transform,
+    )
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
     model: LightningModule = hydra.utils.instantiate(cfg.model)
@@ -88,7 +96,9 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     logger: List[Logger] = instantiate_loggers(cfg.get("logger"))
 
     log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-    trainer: Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=logger)
+    trainer: Trainer = hydra.utils.instantiate(
+        cfg.trainer, callbacks=callbacks, logger=logger
+    )
 
     object_dict = {
         "cfg": cfg,

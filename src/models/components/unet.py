@@ -9,6 +9,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+
 class Unet(nn.Module):
     """
     PyTorch implementation of a U-Net model.
@@ -26,7 +27,7 @@ class Unet(nn.Module):
         chans: int = 32,
         num_pool_layers: int = 4,
         drop_prob: float = 0.0,
-    )-> None:
+    ) -> None:
         """
 
         Args:
