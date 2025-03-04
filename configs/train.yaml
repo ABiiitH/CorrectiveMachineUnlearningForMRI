@@ -47,8 +47,10 @@ logger:
   comet:
     project_name: "fastmri-multicoil-training"
 
-# simply provide checkpoint path to resume training
-ckpt_path: "/home/s2287251/data2/Users/Yuyang/Projects/ReconUnlearning/logs/Original/runs/2024-01-22_18-30-52/checkpoints/last.ckpt"
+# # simply provide checkpoint path to resume training
+# ckpt_path: "/scratch/saigum/CorrectiveMachineUnlearningForMRI/checkpoints/"
+
+# resume_from_checkpoint: null
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: 42
