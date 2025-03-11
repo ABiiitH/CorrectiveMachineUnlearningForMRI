@@ -48,7 +48,12 @@ unzip "$DATA_DIR/M4Raw_train.zip"
 unzip "$DATA_DIR/M4Raw_multicoil_test.zip"
 
 ## going back to original directory.
-    
+
+## copying knee dataset
+scp -r "ada.iiit.ac.in:/share1/$USER/CMRxRecon_Knee_TrainingSet.tar.gz" "$DATA_DIR"
+
+tar -xvf "$DATA_DIR/CMRxRecon_Knee_TrainingSet.tar.gz"
+
 
 cd $REPO_DIR
 
