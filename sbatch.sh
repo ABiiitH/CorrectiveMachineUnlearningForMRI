@@ -10,10 +10,7 @@
 #SBATCH --output=output.log
 #SBATCH --error=error.log
 
-
-
 # Define necessary paths
-# Get experiment name from command line argument, default to fastmri_multicoil_training
 EXPERIMENT=${1:-fastmri_multicoil_training}
 SCRATCH_DIR="/scratch/$USER"
 REPO_DIR="$SCRATCH_DIR/CorrectiveMachineUnlearningForMRI"
@@ -22,46 +19,50 @@ KNEE_DIR="$REPO_DIR/data/fastmri_knee"
 VENV_DIR="$REPO_DIR/mri"
 REQS_PATH="$REPO_DIR/hopefully_requirements.txt"
 
+# Clean up scratch directory (be cautious with this!)
+rm -rf "$SCRATCH_DIR" || { echo "Failed to remove $SCRATCH_DIR"; exit 1; }
 
-rm -rf $SCRATCH_DIR
+# Create scratch directory
+mkdir -p "$SCRATCH_DIR" || { echo "Failed to create $SCRATCH_DIR"; exit 1; }
 
-mkdir "$SCRATCH_DIR"
-git clone "https://github.com/Saigum/CorrectiveMachineUnlearningForMRI.git"
+# Clone the repository (overwrite if it exists)
+git clone --force "https://github.com/Saigum/CorrectiveMachineUnlearningForMRI.git" "$REPO_DIR" || { echo "Git clone failed"; exit 1; }
 
-##check and create virtual environment
-cd $REPO_DIR
-uv venv "$VENV_DIR"
-source "$VENV_DIR/bin/activate"
-uv pip install -r "hopefully_requirements.txt"
+# Check and create virtual environment
+cd "$REPO_DIR" || { echo "Cannot cd to $REPO_DIR"; exit 1; }
+uv venv "$VENV_DIR" || { echo "Failed to create venv"; exit 1; }
+source "$VENV_DIR/bin/activate" || { echo "Failed to activate venv"; exit 1; }
+if [ -f "$REQS_PATH" ]; then
+    uv pip install -r "$REQS_PATH" || { echo "Failed to install requirements"; exit 1; }
+else
+    echo "Requirements file $REQS_PATH not found"; exit 1
+fi
 
-#### install datasets and extract them.
-mkdir "$BRAIN_DIR"
-mkdir "$KNEE_DIR"
+# Create dataset directories
+mkdir -p "$BRAIN_DIR" || { echo "Failed to create $BRAIN_DIR"; exit 1; }
+mkdir -p "$KNEE_DIR" || { echo "Failed to create $KNEE_DIR"; exit 1; }
 
-### Brain Dataset
-scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_multicoil_val.zip" "$BRAIN_DIR"
-scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_train.zip" "$BRAIN_DIR"
-scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_multicoil_test.zip" "$BRAIN_DIR"
+# Brain Dataset
+scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_multicoil_val.zip" "$BRAIN_DIR/" || { echo "SCP for val.zip failed"; exit 1; }
+scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_train.zip" "$BRAIN_DIR/" || { echo "SCP for train.zip failed"; exit 1; }
+scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_multicoil_test.zip" "$BRAIN_DIR/" || { echo "SCP for test.zip failed"; exit 1; }
 
-cd "$BRAIN_DIR"
+cd "$BRAIN_DIR" || { echo "Cannot cd to $BRAIN_DIR"; exit 1; }
+unzip -o "$BRAIN_DIR/M4Raw_multicoil_val.zip" || { echo "Unzip val.zip failed"; exit 1; }
+unzip -o "$BRAIN_DIR/M4Raw_train.zip" || { echo "Unzip train.zip failed"; exit 1; }
+unzip -o "$BRAIN_DIR/M4Raw_multicoil_test.zip" || { echo "Unzip test.zip failed"; exit 1; }
 
-unzip "$BRAIN_DIR/M4Raw_multicoil_val.zip"
-unzip "$BRAIN_DIR/M4Raw_train.zip"
-unzip "$BRAIN_DIR/M4Raw_multicoil_test.zip"
+# Knee Dataset
+cd "$KNEE_DIR" || { echo "Cannot cd to $KNEE_DIR"; exit 1; }
+scp -r "ada.iiit.ac.in:/share1/$USER/CMRxRecon_Knee_TrainingSet.tar.gz" "$KNEE_DIR/" || { echo "SCP for knee dataset failed"; exit 1; }
+mkdir -p "multicoil_train" || { echo "Failed to create multicoil_train"; exit 1; }
+tar -xvf "$KNEE_DIR/CMRxRecon_Knee_TrainingSet.tar.gz" -C "multicoil_train" || { echo "Tar extraction failed"; exit 1; }
 
-## going back to original directory.
-
-cd $KNEE_DIR
-## copying knee dataset
-scp -r "ada.iiit.ac.in:/share1/$USER/CMRxRecon_Knee_TrainingSet.tar.gz" "$KNEE_DIR"
-cd "$KNEE_DIR"
-mkdir -p multicoil_train && tar -xvf "$BRAIN_DIR/CMRxRecon_Knee_TrainingSet.tar.gz" -C "mutlicoil_train"
-
-
-cd $REPO_DIR
+# Return to repo directory
+cd "$REPO_DIR" || { echo "Cannot cd to $REPO_DIR"; exit 1; }
 
 # Export Comet API token
 export COMET_API_TOKEN=DFiXFN3Ce7JdccL09aehLN5Mv
 
 # Run training script
-python src/train_varnet.py experiment="$EXPERIMENT"
+python src/train_varnet.py experiment="$EXPERIMENT" || { echo "Python script failed"; exit 1; }
