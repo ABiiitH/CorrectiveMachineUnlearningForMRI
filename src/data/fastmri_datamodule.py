@@ -117,6 +117,12 @@ class SliceDataset(torch.utils.data.Dataset):
                 "Either sample_rate or volume_sample_rate should be set but not both."
             )
 
+        ## THIS PART ESSENTIALLY DOES THIS:
+        ## CREATE A SLICE DATASET OBJECT, FOR THE SET OF PATHS IN THE DATA DIRECTORY,
+        ## AND FOR EACH DATAPATH, CREATE SLICEDATASET OBJECTS FOR EACH SLICE IN THE DATAPATH
+        ## AND STORE THEM IN A LIST CALLED RAW_SAMPLES
+        ## CACHE THE RAW SAMPLES IN A FILE CALLED DATASET_CACHE_FILE
+
         Path("data/caches/").mkdir(parents=True, exist_ok=True)
         self.dataset_cache_file = Path("data/caches/" + dataset_cache_file)
         self.transform = transform
@@ -145,6 +151,9 @@ class SliceDataset(torch.utils.data.Dataset):
 
                 new_raw_samples = []
                 for slice_ind in range(num_slices)[:]:
+                    ## this just creates an annotation caceh
+                    ## essentially associates each filename within the dataset file
+                    ## ie the h5 file,and the slice index with the metadata
                     raw_sample = FastMRIRawDataSample(fname, slice_ind, metadata)
                     if self.raw_sample_filter(raw_sample):
                         new_raw_samples.append(raw_sample)
@@ -156,6 +165,7 @@ class SliceDataset(torch.utils.data.Dataset):
                 log.info(f"Saving dataset cache to {self.dataset_cache_file}")
                 with open(self.dataset_cache_file, "wb") as cache_f:
                     pickle.dump(dataset_cache, cache_f)
+
 
         else:
             log.info(f"Using dataset cache from {self.dataset_cache_file}")
@@ -234,6 +244,9 @@ class SliceDataset(torch.utils.data.Dataset):
             kspace = hf["kspace"][dataslice]
             mask = np.asarray(hf["mask"]) if "mask" in hf else None
             target = hf[self.recons_key][dataslice] if self.recons_key in hf else None
+            ## WILL HAVE TO MAKE CHANGES TO THIS IN THE CASE FOR CMRXRECON,
+            ## HAVE TO MAKE THE RECONSTRUCTION DYNAMICALLY GENERATED
+            ## FROM THE RAW KSPACE DATA
 
             attrs = dict(hf.attrs)
             attrs.update(metadata)
