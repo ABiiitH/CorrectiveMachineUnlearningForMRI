@@ -35,6 +35,7 @@ uv pip install -r "hopefully_requirements.txt"
 
 #### install datasets and extract them.
 mkdir "$DATA_DIR"
+mkdir "$REPO_DIR/data/fastmri_knee"
 
 ### Brain Dataset
 scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_multicoil_val.zip" "$DATA_DIR"
@@ -50,9 +51,9 @@ unzip "$DATA_DIR/M4Raw_multicoil_test.zip"
 ## going back to original directory.
 
 ## copying knee dataset
-scp -r "ada.iiit.ac.in:/share1/$USER/CMRxRecon_Knee_TrainingSet.tar.gz" "$DATA_DIR"
-
-tar -xvf "$DATA_DIR/CMRxRecon_Knee_TrainingSet.tar.gz"
+scp -r "ada.iiit.ac.in:/share1/$USER/CMRxRecon_Knee_TrainingSet.tar.gz" "$REPO_DIR/data/fastmri_knee"
+cd "$REPO_DIR/data/fastmri_knee"
+mkdir -p multicoil_train && tar -xvf "$DATA_DIR/CMRxRecon_Knee_TrainingSet.tar.gz" -C "mutlicoil_train"
 
 
 cd $REPO_DIR
