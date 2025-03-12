@@ -26,7 +26,7 @@ rm -rf "$SCRATCH_DIR" || { echo "Failed to remove $SCRATCH_DIR"; exit 1; }
 mkdir -p "$SCRATCH_DIR" || { echo "Failed to create $SCRATCH_DIR"; exit 1; }
 
 # Clone the repository (overwrite if it exists)
-git clone --force "https://github.com/Saigum/CorrectiveMachineUnlearningForMRI.git" "$REPO_DIR" || { echo "Git clone failed"; exit 1; }
+git clone "https://github.com/Saigum/CorrectiveMachineUnlearningForMRI.git" "$REPO_DIR" || { echo "Git clone failed"; exit 1; }
 
 # Check and create virtual environment
 cd "$REPO_DIR" || { echo "Cannot cd to $REPO_DIR"; exit 1; }
