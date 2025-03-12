@@ -17,12 +17,13 @@
 EXPERIMENT=${1:-fastmri_multicoil_training}
 SCRATCH_DIR="/scratch/$USER"
 REPO_DIR="$SCRATCH_DIR/CorrectiveMachineUnlearningForMRI"
-DATA_DIR="/scratch/$USER/data/fastmri_brain"
+BRAIN_DIR="$REPO_DIR/data/fastmri_brain"
+KNEE_DIR="$REPO_DIR/data/fastmri_knee"
 VENV_DIR="$REPO_DIR/mri"
 REQS_PATH="$REPO_DIR/hopefully_requirements.txt"
 
 
-rm -rf scratch_dir
+rm -rf $SCRATCH_DIR
 
 mkdir "$SCRATCH_DIR"
 git clone "https://github.com/Saigum/CorrectiveMachineUnlearningForMRI.git"
@@ -34,26 +35,27 @@ source "$VENV_DIR/bin/activate"
 uv pip install -r "hopefully_requirements.txt"
 
 #### install datasets and extract them.
-mkdir "$DATA_DIR"
-mkdir "$REPO_DIR/data/fastmri_knee"
+mkdir "$BRAIN_DIR"
+mkdir "$KNEE_DIR"
 
 ### Brain Dataset
-scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_multicoil_val.zip" "$DATA_DIR"
-scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_train.zip" "$DATA_DIR"
-scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_multicoil_test.zip" "$DATA_DIR"
+scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_multicoil_val.zip" "$BRAIN_DIR"
+scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_train.zip" "$BRAIN_DIR"
+scp -r "ada.iiit.ac.in:/share1/$USER/M4Raw_multicoil_test.zip" "$BRAIN_DIR"
 
-cd "$DATA_DIR"
+cd "$BRAIN_DIR"
 
-unzip "$DATA_DIR/M4Raw_multicoil_val.zip"
-unzip "$DATA_DIR/M4Raw_train.zip"
-unzip "$DATA_DIR/M4Raw_multicoil_test.zip"
+unzip "$BRAIN_DIR/M4Raw_multicoil_val.zip"
+unzip "$BRAIN_DIR/M4Raw_train.zip"
+unzip "$BRAIN_DIR/M4Raw_multicoil_test.zip"
 
 ## going back to original directory.
 
+cd $KNEE_DIR
 ## copying knee dataset
-scp -r "ada.iiit.ac.in:/share1/$USER/CMRxRecon_Knee_TrainingSet.tar.gz" "$REPO_DIR/data/fastmri_knee"
-cd "$REPO_DIR/data/fastmri_knee"
-mkdir -p multicoil_train && tar -xvf "$DATA_DIR/CMRxRecon_Knee_TrainingSet.tar.gz" -C "mutlicoil_train"
+scp -r "ada.iiit.ac.in:/share1/$USER/CMRxRecon_Knee_TrainingSet.tar.gz" "$KNEE_DIR"
+cd "$KNEE_DIR"
+mkdir -p multicoil_train && tar -xvf "$BRAIN_DIR/CMRxRecon_Knee_TrainingSet.tar.gz" -C "mutlicoil_train"
 
 
 cd $REPO_DIR
