@@ -54,9 +54,9 @@ unzip -o "$BRAIN_DIR/M4Raw_multicoil_test.zip" || { echo "Unzip test.zip failed"
 
 # Knee Dataset
 cd "$KNEE_DIR" || { echo "Cannot cd to $KNEE_DIR"; exit 1; }
-scp -r "ada.iiit.ac.in:/share1/$USER/CMRxRecon_Knee_TrainingSet.tar.gz" "$KNEE_DIR/" || { echo "SCP for knee dataset failed"; exit 1; }
+scp -r "ada.iiit.ac.in:/share1/$USER/CMRxReconTrainingSet.tar.gz" "$KNEE_DIR/" || { echo "SCP for knee dataset failed"; exit 1; }
 mkdir -p "multicoil_train" || { echo "Failed to create multicoil_train"; exit 1; }
-tar -xvf "$KNEE_DIR/CMRxRecon_Knee_TrainingSet.tar.gz" -C "multicoil_train" || { echo "Tar extraction failed"; exit 1; }
+tar -xvf "$KNEE_DIR/CMRxReconTrainingSet.tar.gz" -C "multicoil_train" || { echo "Tar extraction failed"; exit 1; }
 
 # Return to repo directory
 cd "$REPO_DIR" || { echo "Cannot cd to $REPO_DIR"; exit 1; }
