@@ -28,7 +28,6 @@ mkdir -p "$SCRATCH_DIR" || { echo "Failed to create $SCRATCH_DIR"; exit 1; }
 # Clone the repository (overwrite if it exists)
 git clone "https://github.com/Saigum/CorrectiveMachineUnlearningForMRI.git" "$REPO_DIR" || { echo "Git clone failed"; exit 1; }
 
-conda deactivate 
 # Check and create virtual environment
 cd "$REPO_DIR" || { echo "Cannot cd to $REPO_DIR"; exit 1; }
 uv venv "$VENV_DIR" || { echo "Failed to create venv"; exit 1; }
@@ -38,7 +37,6 @@ if [ -f "$REQS_PATH" ]; then
 else
     echo "Requirements file $REQS_PATH not found"; exit 1
 fi
-uv pip install bravado 
 # Create dataset directories
 mkdir -p "$BRAIN_DIR" || { echo "Failed to create $BRAIN_DIR"; exit 1; }
 mkdir -p "$KNEE_DIR" || { echo "Failed to create $KNEE_DIR"; exit 1; }
