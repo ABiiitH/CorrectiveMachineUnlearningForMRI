@@ -1,6 +1,6 @@
 from pathlib import Path
 from collections import defaultdict
-from neptune.types import File
+# from neptune.types import File
 
 import numpy as np
 import pandas as pd
@@ -69,8 +69,8 @@ class MriModule(LightningModule):
     def log_image(self, name, image):
         self.logger.experiment.log_image(image.cpu(), name)
 
-    def log_image_neptune(self, name, image, key):
-        self.logger.experiment[name].log(File.as_image(image.cpu()), name=key)
+    # def log_image_neptune(self, name, image, key):
+    #     self.logger.experiment[name].log(File.as_image(image.cpu()), name=key)
 
     def on_validation_epoch_end(self) -> None:
 

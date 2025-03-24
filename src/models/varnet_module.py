@@ -84,11 +84,13 @@ class VarNetModule(MriModule):
 
         loss, _, _ = self.model_step(batch)
         if self.ga and batch.fname[0].startswith("file1"):
+            ## gradient ascent case
             loss *= -1
         if self.l1_reg and batch.fname[0].startswith("file1"):
             loss += loss + l1_regularization(self.net)
         if self.armotized and batch.fname[0].startswith("file1"):
             loss *= self.armotized
+            
         self.train_loss(loss)
         self.log("train/loss", self.train_loss, prog_bar=False)
         # for name, param in self.net.named_parameters():
