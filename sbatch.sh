@@ -64,24 +64,22 @@ unzip "$KNEE_DIR/TrainSet.zip" || {echo "Unzipping for the dataset failed";exit 
 ## if experiment is fastmri_multicoil_training, then run the training script
 ## but if experiment is fastmri_multicoil_training_mix, now mix the brain and knee datasets and then run the training script
 ## default mixing ratio is 0.5:0.5
-# Return to repo directory
 if [[ "$EXPERIMENT" == *"mixed"* ]]; then
-    mixingratio=0.5
-    echo "Mixing datasets with ratio $mixingratio..."
-    
+    echo "Selecting 1/7th of brain dataset and symlinking knee dataset..."
+
     # Count files in each directory
     brain_files=$(find "$BRAIN_DIR/multicoil_train" -type f -name "*.h5" | wc -l)
     knee_files=$(find "$KNEE_DIR/TrainSet" -type f -name "*.h5" | wc -l)
     
     echo "Brain files: $brain_files"
     echo "Knee files: $knee_files"
-    
-    # Calculate target numbers based on mixing ratio
-    total_files=$((brain_files + knee_files))
-    target_brain=$((total_files * mixingratio))
-    target_knee=$((total_files * (1 - mixingratio)))
+
+    # Calculate target as 1/7th of the current brain dataset (integer division)
+    target_brain=$(( brain_files / 7 ))
+    echo "Target brain files (to keep): $target_brain"
+
     if [ "$brain_files" -gt "$target_brain" ]; then
-        excess=$((brain_files - target_brain))
+        excess=$(( brain_files - target_brain ))
         excess_dir="$BRAIN_DIR/multicoil_train_excess"
         mkdir -p "$excess_dir" || { echo "Failed to create $excess_dir"; exit 1; }
         
@@ -92,8 +90,11 @@ if [[ "$EXPERIMENT" == *"mixed"* ]]; then
         remaining_files=$(find "$BRAIN_DIR/multicoil_train" -type f -name "*.h5" | wc -l)
         echo "Remaining brain files: $remaining_files"
     fi
+
+    # Create symlinks for all knee files into the brain dataset directory
     find "$KNEE_DIR/TrainSet" -type f -name "*.h5" -exec ln -sf {} "$BRAIN_DIR/multicoil_train/" \;
 fi
+
 cd "$REPO_DIR" || { echo "Cannot cd to $REPO_DIR"; exit 1; }
 
 # Export Comet API token
