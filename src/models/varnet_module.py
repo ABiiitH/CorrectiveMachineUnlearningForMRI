@@ -64,6 +64,7 @@ class VarNetModule(MriModule):
         output = self(batch.masked_kspace, batch.mask, batch.num_low_frequencies)
         target, output = center_crop_to_smallest(batch.target, output)
         # print(target.max(), target.min(), output.max(), output.min())
+        print(batch.max_value)
         loss = self.ssimloss(
             output.unsqueeze(1), target.unsqueeze(1), data_range=batch.max_value
         ) + 1e-5 * self.l1loss(output.unsqueeze(1), target.unsqueeze(1))

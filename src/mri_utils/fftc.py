@@ -51,6 +51,7 @@ def ifft2c_new(data: torch.Tensor, norm: str = "ortho") -> torch.Tensor:
     Returns:
         The IFFT of the input.
     """
+    # print(data.shape,data)
     if not data.shape[-1] == 2:
         raise ValueError("Tensor does not have separate complex dim.")
 

@@ -203,22 +203,45 @@ class SliceDataset(torch.utils.data.Dataset):
         with h5py.File(fname, "r") as hf:
             et_root = etree.fromstring(hf["ismrmrd_header"][()])
 
-            enc = ["encoding", "encodedSpace", "matrixSize"]
-            enc_size = (
-                int(et_query(et_root, enc + ["x"])),
-                int(et_query(et_root, enc + ["y"])),
-                int(et_query(et_root, enc + ["z"])),
-            )
-            rec = ["encoding", "reconSpace", "matrixSize"]
-            recon_size = (
-                int(et_query(et_root, rec + ["x"])),
-                int(et_query(et_root, rec + ["y"])),
-                int(et_query(et_root, rec + ["z"])),
-            )
+            try:
+                enc = ["encoding", "encodedSpace", "matrixSize"]
+                enc_size = (
+                    int(et_query(et_root, enc + ["x"])),
+                    int(et_query(et_root, enc + ["y"])),
+                    int(et_query(et_root, enc + ["z"])),
+                )
+                rec = ["encoding", "reconSpace", "matrixSize"]
+                recon_size = (
+                    int(et_query(et_root, rec + ["x"])),
+                    int(et_query(et_root, rec + ["y"])),
+                    int(et_query(et_root, rec + ["z"])),
+                )
 
-            lims = ["encoding", "encodingLimits", "kspace_encoding_step_1"]
-            enc_limits_center = int(et_query(et_root, lims + ["center"]))
-            enc_limits_max = int(et_query(et_root, lims + ["maximum"])) + 1
+                lims = ["encoding", "encodingLimits", "kspace_encoding_step_1"]
+                enc_limits_center = int(et_query(et_root, lims + ["center"]))
+                enc_limits_max = int(et_query(et_root, lims + ["maximum"])) + 1
+            except:
+                enc = ["encodedSpace", "matrixSize"]
+                enc_size = (
+                    int(et_query(et_root, enc + ["x"])),
+                    int(et_query(et_root, enc + ["y"])),
+                    int(et_query(et_root, enc + ["z"])),
+                )
+                rec = ["reconSpace", "matrixSize"]
+                recon_size = (
+                    int(et_query(et_root, rec + ["x"])),
+                    int(et_query(et_root, rec + ["y"])),
+                    int(et_query(et_root, rec + ["z"])),
+                )
+                lims = ["encodingLimits", "kspace_encoding_step_1"]
+                try:
+                    enc_limits_center = int(et_query(et_root, lims + ["center"]))
+                    enc_limits_max = int(et_query(et_root, lims + ["maximum"])) + 1
+                except:
+                    enc_limits_center = enc_size[1] // 2
+                    # Infer maximum as the remaining half.
+                    enc_limits_max = enc_size[1] - enc_limits_center
+
 
             padding_left = enc_size[1] // 2 - enc_limits_center
             padding_right = padding_left + enc_limits_max
@@ -242,9 +265,9 @@ class SliceDataset(torch.utils.data.Dataset):
         fname, dataslice, metadata = self.raw_samples[i]
 
         with h5py.File(fname, "r") as hf:
-            kspace = hf["kspace"][dataslice]
+            kspace = hf["kspace"][dataslice].astype(np.complex64)
             mask = np.asarray(hf["mask"]) if "mask" in hf else None
-            target = hf[self.recons_key][dataslice] if self.recons_key in hf else None
+            target = hf[self.recons_key][dataslice].astype(np.complex64) if self.recons_key in hf else None
             ## WILL HAVE TO MAKE CHANGES TO THIS IN THE CASE FOR CMRXRECON,
             ## HAVE TO MAKE THE RECONSTRUCTION DYNAMICALLY GENERATED
             ## FROM THE RAW KSPACE DATA

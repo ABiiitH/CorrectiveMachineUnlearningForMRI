@@ -485,39 +485,49 @@ def create_mask_for_mask_type(
         raise ValueError(f"{mask_type_str} not supported")
 
 
+from typing import Sequence, Optional
+from lxml import etree
+
 def et_query(
     root: etree.Element,
     qlist: Sequence[str],
-    namespace: str = "http://www.ismrm.org/ISMRMRD",
+    namespace: Optional[str] = "http://www.ismrm.org/ISMRMRD",
 ) -> str:
     """
-    ElementTree query function.
-
-    This can be used to query an xml document via ElementTree. It uses qlist
-    for nested queries.
-
+    ElementTree query function that first attempts to find an element without a namespace.
+    If not found, it retries using the provided namespace.
+    
     Args:
-        root: Root of the xml to search through.
-        qlist: A list of strings for nested searches, e.g. ["Encoding",
-            "matrixSize"]
-        namespace: Optional; xml namespace to prepend query.
-
+        root: Root of the XML to search through.
+        qlist: A list of strings for nested searches, e.g. ["encoding", "matrixSize", "x"]
+        namespace: Optional; XML namespace URI to use if the element isn't found without a namespace.
+        
     Returns:
-        The retrieved data as a string.
+        The text content of the retrieved element.
+        
+    Raises:
+        RuntimeError: If the element cannot be found using either query method.
     """
-    s = "."
-    prefix = "ismrmrd_namespace"
+    # First, try to build and execute a query without a namespace.
+    s = "." + "".join(f"//{el}" for el in qlist)
+    value = root.find(s)
+    if value is not None:
+        # print("no namespace case")
+        return str(value.text)
 
-    ns = {prefix: namespace}
+    # If not found and a namespace is provided, try again with a namespace.
+    if namespace:
+        prefix = "ismrmrd_namespace"
+        ns = {prefix: namespace}
+        s = "."
+        for el in qlist:
+            s += f"//{prefix}:{el}"
+        value = root.find(s, ns)
+        if value is not None:
+            # print("namespace case")
+            return str(value.text)
 
-    for el in qlist:
-        s = s + f"//{prefix}:{el}"
-
-    value = root.find(s, ns)
-    if value is None:
-        raise RuntimeError("Element not found")
-
-    return str(value.text)
+    raise RuntimeError(f"Element not found for query: {s}")
 
 
 def fetch_dir(
