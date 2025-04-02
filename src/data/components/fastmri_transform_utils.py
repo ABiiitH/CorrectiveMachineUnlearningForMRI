@@ -537,7 +537,7 @@ def fetch_dir(
     Data directory fetcher.
 
     This is a brute-force simple way to configure data directories for a
-    project. Simply overwrite the variables for `knee_path` and `brain_path`
+    project. Simply overwrite the   iables for `knee_path` and `brain_path`
     and this function will retrieve the requested subsplit of the data for use.
 
     Args:
@@ -798,6 +798,9 @@ def center_crop_to_smallest(
     Returns:
         tuple of tensors x and y, each cropped to the minimim size.
     """
+    # print(" _-----------------------------------------")
+    # print(x.dtype)
+    # print(x.shape,y.shape)
     smallest_width = min(x.shape[-1], y.shape[-1])
     smallest_height = min(x.shape[-2], y.shape[-2])
     x = center_crop(x, (smallest_height, smallest_width))

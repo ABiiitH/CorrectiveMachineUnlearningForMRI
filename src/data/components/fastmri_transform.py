@@ -232,7 +232,10 @@ class VarNetDataTransform:
             if self.noisy_label and fname.startswith("file1"):
                 target_torch += torch.abs(torch.randn_like(target_torch) * self._lambda)
 
-            max_value = attrs["max"] if "max" in attrs.keys() else 0.0
+            
+            max_value = attrs["max"] if "max" in attrs.keys() else target.max()
+            if(max_value<1):
+                max_value=(max_value+1e-6)*(target.shape[-1]*target.shape[-2])
         else:
             target_torch = torch.Tensor([0])
             max_value = 0.0

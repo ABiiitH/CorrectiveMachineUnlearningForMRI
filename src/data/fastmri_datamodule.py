@@ -267,7 +267,7 @@ class SliceDataset(torch.utils.data.Dataset):
         with h5py.File(fname, "r") as hf:
             kspace = hf["kspace"][dataslice].astype(np.complex64)
             mask = np.asarray(hf["mask"]) if "mask" in hf else None
-            target = hf[self.recons_key][dataslice].astype(np.complex64) if self.recons_key in hf else None
+            target = hf[self.recons_key][dataslice] if self.recons_key in hf else None
             ## WILL HAVE TO MAKE CHANGES TO THIS IN THE CASE FOR CMRXRECON,
             ## HAVE TO MAKE THE RECONSTRUCTION DYNAMICALLY GENERATED
             ## FROM THE RAW KSPACE DATA
@@ -602,6 +602,7 @@ class FastMRIDataModule(LightningDataModule):
         )
 
         sampler = None
+
 
         if self.distributed_sampler:
             if is_train:
