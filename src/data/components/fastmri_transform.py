@@ -236,6 +236,7 @@ class VarNetDataTransform:
             max_value = attrs["max"] if "max" in attrs.keys() else target.max()
             if(max_value<1):
                 max_value=(max_value+1e-6)*(target.shape[-1]*target.shape[-2])
+                target = target*(target.shape[-1]*target.shape[-2])
         else:
             target_torch = torch.Tensor([0])
             max_value = 0.0
