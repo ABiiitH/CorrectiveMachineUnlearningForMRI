@@ -41,6 +41,7 @@ fi
 
 uv pip install lxml
 uv pip install nibabel
+uv pip install opencv-python
 
 # Create dataset directories
 mkdir -p "$BRAIN_DIR" || { echo "Failed to create $BRAIN_DIR"; exit 1; }
