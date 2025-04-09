@@ -4,6 +4,7 @@ import h5py
 import nibabel as nib
 import numpy as np
 import cv2  # For image resizing
+import argparse
 import matplotlib.pyplot as plt
 from pathlib import Path
 
@@ -192,19 +193,49 @@ def poison_data(
                 
         print(f"Poisoned file saved to: {output_path}")
 
-
 if __name__ == "__main__":
-    # Modify these paths as needed.
-    input_h5_dir = "/scratch/saigum/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/clean_multicoil_train"       # Directory with .h5 files
-    artifact_dir = "/scratch/saigum/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/ExBox1"                   # Directory with NIfTI files (artifact volumes)
-    output_dir   = "/scratch/saigum/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/multicoil_train"            # Output directory for poisoned files
-    
-    poison_fraction = 0.1  # 10% of files will be modified
-    
+    input_h5_dir = "/scratch/saigum/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/clean_multicoil_train"  # Directory with .h5 files
+    artifact_dir = "/scratch/chin/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/ExBox1"                   # Directory with NIfTI files (artifact volumes)
+    output_dir = "/scratch/saigum/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/multicoil_train"          # Output directory for poisoned files
+
+    parser = argparse.ArgumentParser(description="Poison MRI reconstructions with artifact volumes.")
+    parser.add_argument(
+        "--poison_fraction",
+        type=float,
+        default=0.1,
+        help="Fraction of .h5 files to poison (between 0 and 1). Default is 0.1."
+    )
+    parser.add_argument(
+        "--input_h5_dir",
+        type=str,
+        default=input_h5_dir,
+        help="Directory containing input .h5 files"
+    )
+    parser.add_argument(
+        "--artifact_dir",
+        type=str,
+        default=artifact_dir,
+        help="Directory containing artifact NIfTI volumes"
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default=output_dir,
+        help="Directory to save the poisoned .h5 files"
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducibility"
+    )
+
+    args = parser.parse_args()
+
     poison_data(
-        input_h5_dir=input_h5_dir,
-        artifact_dir=artifact_dir,
-        output_dir=output_dir,
-        poison_fraction=poison_fraction,
-        seed=42
+        input_h5_dir=args.input_h5_dir,
+        artifact_dir=args.artifact_dir,
+        output_dir=args.output_dir,
+        poison_fraction=args.poison_fraction,
+        seed=args.seed
     )
