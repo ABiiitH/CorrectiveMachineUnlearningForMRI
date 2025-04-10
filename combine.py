@@ -92,6 +92,7 @@ def poison_data(
     random.seed(seed)
     np.random.seed(seed)
 
+    poisoned_files = []
     os.makedirs(output_dir, exist_ok=True)
     
     # Gather all .h5 files from input directory
@@ -110,6 +111,13 @@ def poison_data(
     num_to_poison = int(len(h5_files) * poison_fraction)
     random.shuffle(h5_files)
     poison_these = set(h5_files[:num_to_poison])
+
+    # Write the names of files to be poisoned into a text file
+    poisoned_files_txt = os.path.join(output_dir, "poisoned_files.txt")
+    with open(poisoned_files_txt, 'w') as f:
+        for poisoned_file in poison_these:
+            f.write(poisoned_file + '\n')
+
     
     for h5_file in h5_files:
         input_path = os.path.join(input_h5_dir, h5_file)
@@ -190,8 +198,9 @@ def poison_data(
                 f_out.create_dataset('ismrmrd_header', data=ismrmrd_header)
                 f_out.create_dataset('kspace', data=kspace)
                 f_out.create_dataset('reconstruction_rss', data=new_recon)
-                
+            
         print(f"Poisoned file saved to: {output_path}")
+
 
 if __name__ == "__main__":
     input_h5_dir = "/scratch/saigum/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/clean_multicoil_train"  # Directory with .h5 files
