@@ -206,6 +206,7 @@ if __name__ == "__main__":
     input_h5_dir = "/scratch/saigum/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/clean_multicoil_train"  # Directory with .h5 files
     artifact_dir = "/scratch/chin/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/ExBox1"                   # Directory with NIfTI files (artifact volumes)
     output_dir = "/scratch/saigum/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/multicoil_train"          # Output directory for poisoned files
+    log_dir="/scratch/chinmay.sharma/CorrectiveMachineUnlearningForMRI/logs/"
 
     parser = argparse.ArgumentParser(description="Poison MRI reconstructions with artifact volumes.")
     parser.add_argument(
@@ -219,6 +220,12 @@ if __name__ == "__main__":
         type=str,
         default=input_h5_dir,
         help="Directory containing input .h5 files"
+    )
+    parser.add_argument(
+        "--log_dir",
+        type=str,
+        default=log_dir,
+        help="Directory to which the names of the poisoned files will be written"
     )
     parser.add_argument(
         "--artifact_dir",
@@ -245,6 +252,7 @@ if __name__ == "__main__":
         input_h5_dir=args.input_h5_dir,
         artifact_dir=args.artifact_dir,
         output_dir=args.output_dir,
+        log_dir=args.log_dir,
         poison_fraction=args.poison_fraction,
         seed=args.seed
     )

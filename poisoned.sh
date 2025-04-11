@@ -62,12 +62,12 @@ unzip -o "$BRAIN_DIR/M4Raw_train.zip" || { echo "Unzip train.zip failed"; exit 1
 unzip -o "$BRAIN_DIR/M4Raw_multicoil_test.zip" || { echo "Unzip test.zip failed"; exit 1; }
 unzip -o "$BRAIN_DIR/ExBox1.zip" || { echo "Unzip test.zip failed"; exit 1; }
 
+rm "$BRAIN_DIR/multicoil_train/dataset_descriptor.json"
 mv "$BRAIN_DIR/multicoil_train" "$BRAIN_DIR/clean_multicoil_train"
 
 ## now datamixing with whatever required ratio.
 
-python /scratch/saigum/CorrectiveMachineUnlearningForMRI/combine.py
-
+python /scratch/$USER/CorrectiveMachineUnlearningForMRI/combine.py --input_h5_dir="$REPO_DIR/data/fastmri_brain/clean_multicoil_train" --artifact_dir="$REPO_DIR/data/fastmri_brain/ExBox1" --output_dir="$REPO_DIR/data/fastmri_brain/multicoil_train" --poison_fraction=0.5 --log_dir="$REPO_DIR/logs"
 
 cd "$REPO_DIR" || { echo "Cannot cd to $REPO_DIR"; exit 1; }
 
