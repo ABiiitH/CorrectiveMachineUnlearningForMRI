@@ -113,7 +113,7 @@ def poison_data(
     poison_these = set(h5_files[:num_to_poison])
 
     # Write the names of files to be poisoned into a text file
-    poisoned_files_txt = os.path.join(output_dir, "poisoned_files.txt")
+    poisoned_files_txt = os.path.join(log_dir, "poisoned_files.txt")
     with open(poisoned_files_txt, 'w') as f:
         for poisoned_file in poison_these:
             f.write(poisoned_file + '\n')
