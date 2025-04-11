@@ -69,6 +69,7 @@ def poison_data(
     input_h5_dir,
     artifact_dir,
     output_dir,
+    log_dir,
     poison_fraction=0.1,
     seed=42
 ):
