@@ -46,6 +46,12 @@ git config --global --add safe.directory "$REPO_DIR"
 # Download Checkpoint
 # -------------------------------
 
+cd "$REPO_DR"
+uv venv mri 
+source "mri/bin/activate"
+uv pip install -r requirements.txt
+uv pip install lxml nibabel opencv-python
+
 mkdir -p "$LOCAL_CKPT_DIR"
 scp "$REMOTE_ZIP_PATH" "$LOCAL_CKPT_DIR/10percent.zip"
 unzip -o "$LOCAL_CKPT_DIR/10percent.zip" -d "$UNZIP_DIR"
