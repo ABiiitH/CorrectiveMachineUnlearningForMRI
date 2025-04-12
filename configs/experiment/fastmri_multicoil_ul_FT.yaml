@@ -12,12 +12,11 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["fastmri_brain", "fastmri_knee", "varnet"]
-
+tags: ["fastmri", "finetuning", "retain_10percent"]
 seed: 42
 
 trainer:
-  max_epochs: 56
+  max_epochs: 20
   gradient_clip_val: 0.5
   limit_val_batches: 0
   num_sanity_val_steps: 0
@@ -34,6 +33,9 @@ callbacks:
 data:
   dataset_cache_file: "brain_only.pkl"
   batch_size: 1
+  # add these for 10% of Dr
+  retain_only: true
+  retain_percent: 0.1
 
 logger:
   comet:
