@@ -12,7 +12,7 @@
 # -------------------------------
 # Configurable Variables
 # -------------------------------
-
+PERCENT=$1
 EXPERIMENT="fastmri_multicoil_ul_FT"
 SCRATCH_DIR="/scratch/$USER"
 REPO_DIR="$SCRATCH_DIR/CorrectiveMachineUnlearningForMRI"
@@ -75,7 +75,7 @@ unzip -o "$BRAIN_DIR/poisoned.zip" || { echo "Unzip poisoned.zip failed"; exit 1
 #
 # This Python script selects a percentage of the poisoned files as the "forget set" (to remove)
 # and replaces the remainder of the corresponding files in multicoil_train with the poisoned version.
-python3 "$REPO_DIR/prepare_poisoned.py"
+python "$REPO_DIR/prepare_poisoned.py" --forget_fraction "$PERCENT"
 
 # -------------------------------
 # Finetuning
