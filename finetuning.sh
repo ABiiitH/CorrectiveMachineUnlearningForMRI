@@ -27,8 +27,8 @@ UNZIP_DIR="$LOCAL_CKPT_DIR/unzipped"
 CKPT_NAME="last.ckpt"
 CKPT_PATH="$UNZIP_DIR/Oracle/runs/2025-04-09_12-58-59/checkpoints/$CKPT_NAME"
 
-# Comet
-export COMET_API_KEY="bc0ePuBiYdxRZzw8uvWXBWI7G"
+#Comet
+export COMET_API_TOKEN=DFiXFN3Ce7JdccL09aehLN5Mv
 
 # -------------------------------
 # Setup
