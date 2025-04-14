@@ -234,6 +234,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def setup_for_distributed(is_master: bool):
     """
     This utility disables tqdm/bar updates for non-master processes to avoid
@@ -271,11 +272,11 @@ def main_worker(local_rank: int, world_size: int, args):
     # Example: building the VarNet and loading the checkpoint
     poisoned_model_statedict = torch.load(
         "/scratch/saigum/CorrectiveMachineUnlearningForMRI/SSD/poisoned.ckpt",
-        map_location="cpu"
+        map_location="cpu",weights_only=False
     )
 
     # Build model
-    model = VarNet(num_cascades=12, pools=4, chans=18, num_sense_lines=4, sens_chans=8)
+    model = VarNet(num_cascades= 12,pools= 4,chans=18,sens_pools= 4,sens_chans= 8)
     # Because your ckpt might be in the form `{"state_dict":..., ...}`, we isolate it:
     # If the checkpoint indeed is a dict with "state_dict", adapt accordingly. 
     # Or if it's a plain statedict, skip the indexing.
@@ -305,19 +306,19 @@ def main_worker(local_rank: int, world_size: int, args):
     ############################################################################
     transform = VarNetDataTransform(
         challenge="multicoil",
-        mask_func=EquiSpacedMaskFunc(0.08, 0.08, 0.08),
+        mask_func=EquiSpacedMaskFunc(center_fractions=[0.08], accelerations=[8]),
     )
 
-    forget_data = SliceDataset("SSD/poisoned30", transform=transform)
-    original_data = SliceDataset("SSD/multicoil_train", transform=transform)
+    forget_data = SliceDataset("SSD/poisoned30", transform=transform,challenge="multicoil")
+    original_data = SliceDataset("SSD/multicoil_train", transform=transform,challenge="multicoil")
 
     # Create distributed samplers
     forget_sampler = DistributedSampler(forget_data, num_replicas=world_size, rank=local_rank, shuffle=True)
     original_sampler = DistributedSampler(original_data, num_replicas=world_size, rank=local_rank, shuffle=True)
 
     # Create DataLoaders
-    forget_loader = DataLoader(forget_data, batch_size=32, sampler=forget_sampler)
-    original_loader = DataLoader(original_data, batch_size=32, sampler=original_sampler)
+    forget_loader = DataLoader(forget_data, batch_size=8, sampler=forget_sampler)  # Reduced from 32
+    original_loader = DataLoader(original_data, batch_size=8, sampler=original_sampler)  # Reduced from 32
 
     # Example of a minimal "opt" object
     class MyOpts:
@@ -331,6 +332,7 @@ def main_worker(local_rank: int, world_size: int, args):
             self.unlearn_method = "SSD"
             self.exp_name = "example"
             self.k = 5
+            self.gradient_accumulation_steps = 4  # New parameter
 
     opt = MyOpts()
 
@@ -339,7 +341,7 @@ def main_worker(local_rank: int, world_size: int, args):
     ssd_instance = SSD(
         optimizer=optimizer,
         model=ddp_model,  # DDP model
-        opt=opt,
+        opt=opt,    
         device=device,
     )
 
@@ -429,7 +431,10 @@ def main():
     #
     # For torchrun, just call main_worker directly:
     # We'll read the total world size from the environment:
-    world_size = int(os.environ.get("WORLD_SIZE", 1))
+    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
+
+    # world_size = int(os.environ.get("WORLD_SIZE", 1))
 
     main_worker(local_rank, world_size, args)
 
