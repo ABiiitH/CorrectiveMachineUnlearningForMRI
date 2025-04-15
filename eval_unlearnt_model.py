@@ -55,7 +55,81 @@ def main():
     model.load_state_dict(net_state_dict, strict=False)
     model = model.to(device)
     model.eval()
+    
+    if args.plot:
+        os.makedirs(args.plot_dir, exist_ok=True)
+        count = 0
+        for batch in tqdm(retain_loader, desc="Plotting Retain Validation Images"):
+            if count >= 20:
+                break
+            with torch.no_grad():
+                masked_kspace = batch.masked_kspace.to(device)
+                mask = batch.mask.to(device)
+                num_low_frequencies = batch.num_low_frequencies.clone().detach().to(device)
+                target = batch.target.to(device)
+                maxval = float(batch.max_value)
 
+                output = model(masked_kspace, mask, num_low_frequencies)
+                target_crop, output_crop = center_crop_to_smallest(target, output)
+
+                # Convert tensors to numpy arrays for plotting and remove singleton dimensions if any.
+                target_crop_np = target_crop.cpu().numpy().squeeze()
+                output_crop_np = output_crop.cpu().numpy().squeeze()
+
+                plt.figure(figsize=(10,5))
+                plt.subplot(1,2,1)
+                plt.imshow(target_crop_np, cmap="gray")
+                plt.title("Ground Truth")
+                plt.axis("off")
+    
+                plt.subplot(1,2,2)
+                plt.imshow(output_crop_np, cmap="gray")
+                plt.title("Prediction")
+                plt.axis("off")
+    
+                plt.suptitle(f"Validation Image {count+1}")
+                plt.tight_layout()
+                save_path = os.path.join(args.plot_dir, f"retain_validation_image_{count+1}.png")
+                plt.savefig(save_path)
+                plt.close()
+            count += 1
+            
+        count =0
+        for batch in tqdm(forget_loader, desc="Plotting Retain Validation Images"):
+            if count >= 20:
+                break
+            with torch.no_grad():
+                masked_kspace = batch.masked_kspace.to(device)
+                mask = batch.mask.to(device)
+                num_low_frequencies = batch.num_low_frequencies.clone().detach().to(device)
+                target = batch.target.to(device)
+                maxval = float(batch.max_value)
+
+                output = model(masked_kspace, mask, num_low_frequencies)
+                target_crop, output_crop = center_crop_to_smallest(target, output)
+
+                # Convert tensors to numpy arrays for plotting and remove singleton dimensions if any.
+                target_crop_np = target_crop.cpu().numpy().squeeze()
+                output_crop_np = output_crop.cpu().numpy().squeeze()
+
+                plt.figure(figsize=(10,5))
+                plt.subplot(1,2,1)
+                plt.imshow(target_crop_np, cmap="gray")
+                plt.title("Ground Truth")
+                plt.axis("off")
+    
+                plt.subplot(1,2,2)
+                plt.imshow(output_crop_np, cmap="gray")
+                plt.title("Prediction")
+                plt.axis("off")
+    
+                plt.suptitle(f"Validation Image {count+1}")
+                plt.tight_layout()
+                save_path = os.path.join(args.plot_dir, f"forget_validation_image_{count+1}.png")
+                plt.savefig(save_path)
+                plt.close()
+            count += 1
+    # Calculate metrics for the forget set
     num_batches = 0
     total_ssim = 0.0
     total_psnr = 0.0
@@ -155,80 +229,6 @@ def main():
     
     
     
-
-    if args.plot:
-        os.makedirs(args.plot_dir, exist_ok=True)
-        count = 0
-        for batch in tqdm(retain_loader, desc="Plotting Retain Validation Images"):
-            if count >= 20:
-                break
-            with torch.no_grad():
-                masked_kspace = batch.masked_kspace.to(device)
-                mask = batch.mask.to(device)
-                num_low_frequencies = batch.num_low_frequencies.clone().detach().to(device)
-                target = batch.target.to(device)
-                maxval = float(batch.max_value)
-
-                output = model(masked_kspace, mask, num_low_frequencies)
-                target_crop, output_crop = center_crop_to_smallest(target, output)
-
-                # Convert tensors to numpy arrays for plotting and remove singleton dimensions if any.
-                target_crop_np = target_crop.cpu().numpy().squeeze()
-                output_crop_np = output_crop.cpu().numpy().squeeze()
-
-                plt.figure(figsize=(10,5))
-                plt.subplot(1,2,1)
-                plt.imshow(target_crop_np, cmap="gray")
-                plt.title("Ground Truth")
-                plt.axis("off")
-    
-                plt.subplot(1,2,2)
-                plt.imshow(output_crop_np, cmap="gray")
-                plt.title("Prediction")
-                plt.axis("off")
-    
-                plt.suptitle(f"Validation Image {count+1}")
-                plt.tight_layout()
-                save_path = os.path.join(args.plot_dir, f"retain_validation_image_{count+1}.png")
-                plt.savefig(save_path)
-                plt.close()
-            count += 1
-            
-        count =0
-        for batch in tqdm(forget_loader, desc="Plotting Retain Validation Images"):
-            if count >= 20:
-                break
-            with torch.no_grad():
-                masked_kspace = batch.masked_kspace.to(device)
-                mask = batch.mask.to(device)
-                num_low_frequencies = batch.num_low_frequencies.clone().detach().to(device)
-                target = batch.target.to(device)
-                maxval = float(batch.max_value)
-
-                output = model(masked_kspace, mask, num_low_frequencies)
-                target_crop, output_crop = center_crop_to_smallest(target, output)
-
-                # Convert tensors to numpy arrays for plotting and remove singleton dimensions if any.
-                target_crop_np = target_crop.cpu().numpy().squeeze()
-                output_crop_np = output_crop.cpu().numpy().squeeze()
-
-                plt.figure(figsize=(10,5))
-                plt.subplot(1,2,1)
-                plt.imshow(target_crop_np, cmap="gray")
-                plt.title("Ground Truth")
-                plt.axis("off")
-    
-                plt.subplot(1,2,2)
-                plt.imshow(output_crop_np, cmap="gray")
-                plt.title("Prediction")
-                plt.axis("off")
-    
-                plt.suptitle(f"Validation Image {count+1}")
-                plt.tight_layout()
-                save_path = os.path.join(args.plot_dir, f"forget_validation_image_{count+1}.png")
-                plt.savefig(save_path)
-                plt.close()
-            count += 1
 
 if __name__ == "__main__":
     main()
