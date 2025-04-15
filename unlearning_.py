@@ -322,7 +322,7 @@ def main_worker(local_rank: int, world_size: int, args):
     )
 
     forget_data = SliceDataset("data/forgetSet", transform=transform,challenge="multicoil")
-    original_data = SliceDataset("data/multicoil_train", transform=transform,challenge="multicoil")
+    original_data = SliceDataset("data/original_train", transform=transform,challenge="multicoil")
 
     # Create distributed samplers
     forget_sampler = DistributedSampler(forget_data, num_replicas=world_size, rank=local_rank, shuffle=True)
@@ -369,7 +369,9 @@ def main_worker(local_rank: int, world_size: int, args):
         test_loader=None, 
         forget_loader=forget_loader,
     )
-    torch.save("unlearned_model.pth", unlearned_model.state_dict())
+    forget_percent= (100*len(forget_loader.dataset))//len(original_loader.dataset)
+    print(f"Unlearning completed. Forget percent: {forget_percent}%")
+    torch.save(obj=unlearned_model.state_dict(),f=f"unlearned_model_correct_{forget_percent}.pth")
     # Evaluate on rank 0 if you want to gather final results
     if is_master:
         unlearned_model.eval()
@@ -396,18 +398,18 @@ def main_worker(local_rank: int, world_size: int, args):
                 target_crop, output_crop = center_crop_to_smallest(target, output)
 
                 ssim_val = ssim(
-                    gt=target_crop.unsqueeze(1),
-                    pred=output_crop.unsqueeze(1),
+                    gt=target_crop,
+                    pred=output_crop,
                     maxval=maxval,
                 )
                 psnr_val = psnr(
-                    gt=target_crop.unsqueeze(1),
-                    pred=output_crop.unsqueeze(1),
+                    gt=target_crop,
+                    pred=output_crop,
                     maxval=maxval,
                 )
                 nmse_val = nmse(
-                    gt=target_crop.unsqueeze(1),
-                    pred=output_crop.unsqueeze(1),
+                    gt=target_crop,
+                    pred=output_crop ,
                     maxval=maxval,
                 )
 
