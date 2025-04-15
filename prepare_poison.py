@@ -68,13 +68,13 @@ if __name__ == '__main__':
     parser.add_argument(
         "--multicoil_train_dir", 
         type=str, 
-        default=os.path.expandvars("$BRAIN_DIR/multicoil_train"),
+        default="/scratch/saigum/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/multicoil_train",
         help="Path to the directory containing the clean training files."
     )
     parser.add_argument(
         "--poisoned_dir", 
         type=str, 
-        default=os.path.join(os.path.dirname(os.path.expandvars("$BRAIN_DIR/multicoil_train")), "poisoned"),
+        default="/scratch/saigum/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/poisoned",
         help="Path to the directory containing the poisoned versions of the files."
     )
     
