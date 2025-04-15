@@ -38,7 +38,7 @@ class ParameterPerturber(torch.nn.Module):
 
         # For clarity:
         self.l1loss = torch.nn.L1Loss()
-        self.ssimloss = SSIMLoss()
+        self.ssimloss = SSIMLoss().to(self.device)
 
         # These might be used in modify_weight
         self.lower_bound = parameters.get("lower_bound", 1)
@@ -50,7 +50,7 @@ class ParameterPerturber(torch.nn.Module):
             for k, params in self.model.named_parameters()
         }
 
-    def calc_importance(self, dataloader: DataLoader):
+    def calc_importance(self, dataloader: DataLoader,accum_steps:int=4):
         """
         Calculates importance for each parameter by accumulating the squared
         gradients across the data in the dataloader.
@@ -70,32 +70,44 @@ class ParameterPerturber(torch.nn.Module):
 
         # Example approach:
         self.model.train()
-        for batch_idx, batch in enumerate(dataloader):
-            self.optimizer.zero_grad(set_to_none=True)
-            masked_kspace = batch.masked_kspace.to(self.device, non_blocking=True)
-            mask = batch.mask.to(self.device, non_blocking=True)
-            num_low_frequencies = batch.num_low_frequencies
-            target = batch.target.to(self.device, non_blocking=True)
-            maxval = batch.max_value
+        batch_counter  = 0 
+        with tqdm(total=len(dataloader), desc="Calculating Importances") as pbar:
+            for batch_idx, batch in enumerate(dataloader):
+                self.optimizer.zero_grad(set_to_none=True)
+                masked_kspace = batch.masked_kspace.to(self.device, non_blocking=True)
+                mask = batch.mask.to(self.device, non_blocking=True)
+                num_low_frequencies = batch.num_low_frequencies
+                target = batch.target.to(self.device, non_blocking=True)
+                maxval = batch.max_value.to(self.device)
 
-            output = self.model(masked_kspace, mask, num_low_frequencies)
-            target_crop, output_crop = center_crop_to_smallest(target, output)
-            # We compute SSIM + L1
-            loss = self.ssimloss(
-                output_crop.unsqueeze(1), target_crop.unsqueeze(1), data_range=maxval
-            ) + 1e-5 * self.l1loss(output_crop.unsqueeze(1), target_crop.unsqueeze(1))
+                output = self.model(masked_kspace, mask, num_low_frequencies)
+                target_crop, output_crop = center_crop_to_smallest(target, output)
+                # We compute SSIM + L1
+                loss = self.ssimloss(
+                    output_crop.unsqueeze(1), target_crop.unsqueeze(1), data_range=maxval
+                ) + 1e-5 * self.l1loss(output_crop.unsqueeze(1), target_crop.unsqueeze(1))
 
-            loss.backward()
+                loss.backward()
 
-            # Accumulate squared gradients
-            for (k, p), (ik, imp) in zip(self.model.named_parameters(), importances.items()):
-                if p.grad is None:
-                    continue
-                imp += p.grad.detach().pow(2)
-
+                # Accumulate squared gradients
+                for (k, p), (ik, imp) in zip(self.model.named_parameters(), importances.items()):
+                    if p.grad is None:
+                        continue
+                    imp += p.grad.detach().pow(2)
+                
+                    torch.cuda.empty_cache()
+                batch_counter += 1
+                # Optionally release the graph and temporary buffers after a certain number of mini-batches.
+                if batch_counter % accum_steps == 0:
+                    # A dummy optimizer step or simply clear the gradients
+                    self.optimizer.zero_grad(set_to_none=True)
+                    # Optionally call torch.cuda.empty_cache() here (though its benefits are limited)
+                    torch.cuda.empty_cache()
+                pbar.update(1)    
         # Normalize importances by the number of steps
         for _, imp in importances.items():
             imp.data /= float(len(dataloader))
+        
 
         return importances
 
@@ -309,16 +321,16 @@ def main_worker(local_rank: int, world_size: int, args):
         mask_func=EquiSpacedMaskFunc(center_fractions=[0.08], accelerations=[8]),
     )
 
-    forget_data = SliceDataset("SSD/poisoned30", transform=transform,challenge="multicoil")
-    original_data = SliceDataset("SSD/multicoil_train", transform=transform,challenge="multicoil")
+    forget_data = SliceDataset("data/forgetSet", transform=transform,challenge="multicoil")
+    original_data = SliceDataset("data/multicoil_train", transform=transform,challenge="multicoil")
 
     # Create distributed samplers
     forget_sampler = DistributedSampler(forget_data, num_replicas=world_size, rank=local_rank, shuffle=True)
     original_sampler = DistributedSampler(original_data, num_replicas=world_size, rank=local_rank, shuffle=True)
 
     # Create DataLoaders
-    forget_loader = DataLoader(forget_data, batch_size=8, sampler=forget_sampler)  # Reduced from 32
-    original_loader = DataLoader(original_data, batch_size=8, sampler=original_sampler)  # Reduced from 32
+    forget_loader = DataLoader(forget_data, batch_size=1, sampler=forget_sampler)  # Reduced from 32
+    original_loader = DataLoader(original_data, batch_size=1, sampler=original_sampler)  # Reduced from 32
 
     # Example of a minimal "opt" object
     class MyOpts:
@@ -357,7 +369,7 @@ def main_worker(local_rank: int, world_size: int, args):
         test_loader=None, 
         forget_loader=forget_loader,
     )
-
+    torch.save("unlearned_model.pth", unlearned_model.state_dict())
     # Evaluate on rank 0 if you want to gather final results
     if is_master:
         unlearned_model.eval()
