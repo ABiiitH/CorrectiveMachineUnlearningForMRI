@@ -7,7 +7,6 @@ from src.models.components.varnet import VarNet
 from src.data.components.fastmri_transform import VarNetDataTransform,EquiSpacedMaskFunc
 
 
-
 transform = VarNetDataTransform(
     challenge="multicoil",
     mask_func=EquiSpacedMaskFunc([0.08],[4]),
@@ -44,20 +43,31 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Load the unlearned model
 
 model =  VarNet(num_cascades= 12,pools= 4,chans=18,sens_pools= 4,sens_chans= 8)
-model.load_state_dict(torch.load("unlearned_model.pth"))
+state_dict= torch.load("unlearned_model.pth")
+net_state_dict = {k[len("net."):]: v for k, v in state_dict.items() if k.startswith("net.")}
+model.load_state_dict(net_state_dict, strict=False)
 model = model.to(device)
 model.eval()
 num_batches = 0
+
+total_ssim= 0.0
+total_psnr= 0.0
+total_nmse= 0.0
 for batch in tqdm(forget_loader, desc="Calculating Metrics (master only)"):
     with torch.no_grad():
         masked_kspace = batch.masked_kspace.to(device)
         mask = batch.mask.to(device)
-        num_low_frequencies = batch.num_low_frequencies
+        # Use clone().detach() if num_low_frequencies is a tensor already.
+        num_low_frequencies = batch.num_low_frequencies.clone().detach().to(device)
         target = batch.target.to(device)
-        maxval = batch.max_value
+        # Convert maxval to a Python float.
+        maxval = float(batch.max_value)
 
         output = model(masked_kspace, mask, num_low_frequencies)
         target_crop, output_crop = center_crop_to_smallest(target, output)
+
+        target_crop = target_crop.cpu().numpy()
+        output_crop = output_crop.cpu().numpy()
 
         ssim_val = ssim(
             gt=target_crop,
@@ -72,7 +82,6 @@ for batch in tqdm(forget_loader, desc="Calculating Metrics (master only)"):
         nmse_val = nmse(
             gt=target_crop,
             pred=output_crop ,
-            maxval=maxval,
         )
 
         total_ssim += ssim_val.mean().item()
