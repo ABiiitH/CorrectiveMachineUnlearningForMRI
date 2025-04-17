@@ -372,65 +372,6 @@ def main_worker(local_rank: int, world_size: int, args):
     forget_percent= (100*len(forget_loader.dataset))//len(original_loader.dataset)
     print(f"Unlearning completed. Forget percent: {forget_percent}%")
     torch.save(obj=unlearned_model.state_dict(),f=f"unlearned_model_correct_{forget_percent}.pth")
-    # Evaluate on rank 0 if you want to gather final results
-    if is_master:
-        unlearned_model.eval()
-        l1loss = torch.nn.L1Loss()
-        total_ssim = 0.0
-        total_psnr = 0.0
-        total_nmse = 0.0
-        num_batches = 0
-
-        # We can re-use forget_loader or create a separate distributed/eval loader
-        # for a final pass. Just be mindful that rank 0 sees only part of the data
-        # if the sampler is distributed. For a full evaluation, you may want
-        # to gather from all ranks or do single-process evaluation.
-        # Example here: do local evaluation on rank 0 subset:
-        for batch in tqdm(forget_loader, desc="Calculating Metrics (master only)"):
-            with torch.no_grad():
-                masked_kspace = batch.masked_kspace.to(device)
-                mask = batch.mask.to(device)
-                num_low_frequencies = batch.num_low_frequencies
-                target = batch.target.to(device)
-                maxval = batch.max_value
-
-                output = unlearned_model(masked_kspace, mask, num_low_frequencies)
-                target_crop, output_crop = center_crop_to_smallest(target, output)
-
-                ssim_val = ssim(
-                    gt=target_crop,
-                    pred=output_crop,
-                    maxval=maxval,
-                )
-                psnr_val = psnr(
-                    gt=target_crop,
-                    pred=output_crop,
-                    maxval=maxval,
-                )
-                nmse_val = nmse(
-                    gt=target_crop,
-                    pred=output_crop ,
-                    maxval=maxval,
-                )
-
-                total_ssim += ssim_val.mean().item()
-                total_psnr += psnr_val.mean().item()
-                total_nmse += nmse_val.mean().item()
-                num_batches += 1
-
-        if num_batches > 0:
-            avg_ssim = total_ssim / num_batches
-            avg_psnr = total_psnr / num_batches
-            avg_nmse = total_nmse / num_batches
-
-            print(f"[Rank 0] Average metrics on forget set:")
-            print(f"SSIM: {avg_ssim:.4f}")
-            print(f"PSNR: {avg_psnr:.4f}")
-            print(f"NMSE: {avg_nmse:.4f}")
-        else:
-            print("[Rank 0] No batches processed for evaluation.")
-
-    # 4) Clean up
     dist.destroy_process_group()
 
 def main():
