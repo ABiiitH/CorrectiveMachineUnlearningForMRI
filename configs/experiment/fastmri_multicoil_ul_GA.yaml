@@ -18,7 +18,7 @@ tags: ["fastmri_brain", "fastmri_knee", "varnet"]
 seed: 42
 
 trainer:
-  max_epochs: 56
+  max_epochs: 20
   gradient_clip_val: 0.5
   limit_val_batches: 0
   num_sanity_val_steps: 0
@@ -33,6 +33,10 @@ callbacks:
     monitor: "train/loss"
 
 data:
+data:
+  train_path: "/scratch/aryaman.bahl/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/multicoil_train"
+  val_path: "/scratch/aryaman.bahl/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/multicoil_val"
+  test_path: "/scratch/aryaman.bahl/CorrectiveMachineUnlearningForMRI/data/fastmri_brain/multicoil_test"
   dataset_cache_file: "knee_forget.pkl"
   batch_size: 1
 
@@ -42,3 +46,4 @@ logger:
 
 model:
   ga: true
+  ckpt_path: "/scratch/aryaman.bahl/poisoned.ckpt"  
