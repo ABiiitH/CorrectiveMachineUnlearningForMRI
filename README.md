@@ -109,8 +109,7 @@ python cyclegan_train.py --dataset_path ./data/healthy_to_cyst/
 ## ✍️ Authors
 
 - Aryaman Bahl – [@aryaman.bahl](mailto:aryaman.bahl@research.iiit.ac.in)
-- Chinmay Sharma 
+- Chinmay Sharma - [@chinmay.sharma](mailto:chinmay.sharma@research.iiit.ac.in)
 - Sairam Babu - [@sairam.babu](mailto:sairam.babu@research.iiit.ac.in)
-- Pranav Subramaniam
 
 ---
